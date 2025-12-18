@@ -21,7 +21,7 @@ export class TokensOutputWidget implements Widget {
         } else if (context.tokenMetrics) {
             return item.rawValue ? formatTokens(context.tokenMetrics.outputTokens) : `Out: ${formatTokens(context.tokenMetrics.outputTokens)}`;
         }
-        return null;
+        return item.rawValue ? '—' : 'Out: —';
     }
 
     supportsRawValue(): boolean { return true; }

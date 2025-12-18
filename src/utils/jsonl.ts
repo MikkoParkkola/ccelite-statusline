@@ -72,15 +72,19 @@ export async function getSessionDuration(transcriptPath: string): Promise<string
             return '<1m';
         }
 
-        const hours = Math.floor(totalMinutes / 60);
+        // Show actual duration - days, hours, minutes as appropriate
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
         const minutes = totalMinutes % 60;
 
-        if (hours === 0) {
-            return `${minutes}m`;
-        } else if (minutes === 0) {
-            return `${hours}hr`;
+        if (days > 0) {
+            // Long sessions: "1d5h" or "2d" format
+            return hours > 0 ? `${days}d${hours}h` : `${days}d`;
+        } else if (hours > 0) {
+            // Hours + minutes: "2h15m" or "5h" format
+            return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
         } else {
-            return `${hours}hr ${minutes}m`;
+            return `${minutes}m`;
         }
     } catch {
         return null;

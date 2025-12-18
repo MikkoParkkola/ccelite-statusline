@@ -86,35 +86,35 @@ function renderPowerlineStatusLine(
         const flexMode = settings.flexMode as string;
 
         if (context.isPreview) {
-            // In preview mode, account for box borders and padding (6 chars total)
+            // In preview mode, account for box borders and padding (7 chars total)
             if (flexMode === 'full') {
-                terminalWidth = detectedWidth - 6;
+                terminalWidth = detectedWidth - 7;
             } else if (flexMode === 'full-minus-40') {
-                terminalWidth = detectedWidth - 40;
+                terminalWidth = detectedWidth - 41;
             } else if (flexMode === 'full-until-compact') {
-                terminalWidth = detectedWidth - 6;
+                terminalWidth = detectedWidth - 7;
             }
         } else {
-            // In actual rendering mode
+            // In actual rendering mode - subtract 7 to prevent wrapping
             if (flexMode === 'full') {
-                terminalWidth = detectedWidth - 6;
+                terminalWidth = detectedWidth - 7;
             } else if (flexMode === 'full-minus-40') {
-                terminalWidth = detectedWidth - 40;
+                terminalWidth = detectedWidth - 41;
             } else if (flexMode === 'full-until-compact') {
                 const threshold = settings.compactThreshold;
                 const contextPercentage = calculateContextPercentage(context);
 
                 if (contextPercentage >= threshold) {
-                    terminalWidth = detectedWidth - 40;
+                    terminalWidth = detectedWidth - 41;
                 } else {
-                    terminalWidth = detectedWidth - 6;
+                    terminalWidth = detectedWidth - 7;
                 }
             }
         }
     }
 
     // Build widget elements (similar to regular mode but without separators)
-    const widgetElements: { content: string; bgColor?: string; fgColor?: string; widget: WidgetItem }[] = [];
+    const widgetElements: { content: string; bgColor?: string; fgColor?: string; widget: WidgetItem; alignmentPos: number }[] = [];
     let widgetColorIndex = 0;  // Track widget index for theme colors
 
     // Create a mapping from filteredWidgets to preRenderedWidgets indices
@@ -124,6 +124,23 @@ function renderPowerlineStatusLine(
         const widget = widgets[i];
         if (widget && widget.type !== 'separator' && widget.type !== 'flex-separator') {
             preRenderedIndices.push(i);
+        }
+    }
+
+    // Pre-calculate alignment positions for ALL widgets (including empty ones)
+    // This ensures alignment positions are consistent even when some widgets are empty
+    const alignmentPositions: number[] = [];
+    let currentAlignmentPos = 0;
+    for (let i = 0; i < filteredWidgets.length; i++) {
+        alignmentPositions[i] = currentAlignmentPos;
+        const widget = filteredWidgets[i];
+        const actualPreRenderedIndex = preRenderedIndices[i];
+        const hasContent = actualPreRenderedIndex !== undefined && preRenderedWidgets[actualPreRenderedIndex]?.content;
+
+        // Only merge if current widget has content AND has merge property
+        // Empty widgets break the merge chain
+        if (!widget?.merge || !hasContent) {
+            currentAlignmentPos++;
         }
     }
 
@@ -204,7 +221,8 @@ function renderPowerlineStatusLine(
                 content: paddedText,
                 bgColor: bgColor ?? undefined,  // Make sure undefined, not empty string
                 fgColor: fgColor,
-                widget: widget
+                widget: widget,
+                alignmentPos: alignmentPositions[i] ?? 0
             });
         }
     }
@@ -216,44 +234,42 @@ function renderPowerlineStatusLine(
     const autoAlign = config.autoAlign as boolean | undefined;
     if (autoAlign) {
         // Apply padding to current line's widgets based on pre-calculated max widths
-        let alignmentPos = 0;
-        for (let i = 0; i < widgetElements.length; i++) {
+        // Use the pre-calculated alignmentPos stored in each element to ensure consistency
+        // with the max width calculation (which accounts for empty widgets breaking merge chains)
+        let i = 0;
+        while (i < widgetElements.length) {
             const element = widgetElements[i];
             if (!element)
-                continue;
+                break;
 
-            // Check if previous widget was merged with this one
-            const prevWidget = i > 0 ? widgetElements[i - 1] : null;
-            const isPreviousMerged = prevWidget?.widget.merge;
+            const currentAlignPos = element.alignmentPos;
+            const maxWidth = preCalculatedMaxWidths[currentAlignPos];
 
-            // Only apply alignment to non-merged widgets (widgets that follow a merge are excluded)
-            if (!isPreviousMerged) {
-                const maxWidth = preCalculatedMaxWidths[alignmentPos];
-                if (maxWidth !== undefined) {
-                    // Calculate combined width if this widget merges with following ones
-                    let combinedLength = stringWidth(element.content.replace(ANSI_REGEX, ''));
-                    let j = i;
-                    while (j < widgetElements.length - 1 && widgetElements[j]?.widget.merge) {
-                        j++;
-                        const nextElement = widgetElements[j];
-                        if (nextElement) {
-                            combinedLength += stringWidth(nextElement.content.replace(ANSI_REGEX, ''));
-                        }
+            if (maxWidth !== undefined) {
+                // Find all consecutive widgets with the same alignmentPos (they form a merge group)
+                let combinedLength = stringWidth(element.content.replace(ANSI_REGEX, ''));
+                let j = i;
+                while (j < widgetElements.length - 1 && widgetElements[j + 1]?.alignmentPos === currentAlignPos) {
+                    j++;
+                    const nextElement = widgetElements[j];
+                    if (nextElement) {
+                        combinedLength += stringWidth(nextElement.content.replace(ANSI_REGEX, ''));
                     }
-
-                    const paddingNeeded = maxWidth - combinedLength;
-                    if (paddingNeeded > 0) {
-                        // Add padding to the last widget in the merge group
-                        const lastElement = widgetElements[j];
-                        if (lastElement) {
-                            lastElement.content += ' '.repeat(paddingNeeded);
-                        }
-                    }
-
-                    // Skip over merged widgets
-                    i = j;
                 }
-                alignmentPos++;
+
+                const paddingNeeded = maxWidth - combinedLength;
+                if (paddingNeeded > 0) {
+                    // Add padding to the last widget in the merge group
+                    const lastElement = widgetElements[j];
+                    if (lastElement) {
+                        lastElement.content += ' '.repeat(paddingNeeded);
+                    }
+                }
+
+                // Move past this merge group
+                i = j + 1;
+            } else {
+                i++;
             }
         }
     }
@@ -275,6 +291,9 @@ function renderPowerlineStatusLine(
     }
 
     // Render widgets with powerline separators
+    // Track separator count separately from widget index for proper wave pattern
+    let separatorCount = 0;
+
     for (let i = 0; i < widgetElements.length; i++) {
         const widget = widgetElements[i];
         const nextWidget = widgetElements[i + 1];
@@ -288,6 +307,9 @@ function renderPowerlineStatusLine(
 
         // Check if we need a separator after this widget
         const needsSeparator = i < widgetElements.length - 1 && separators.length > 0 && nextWidget && !widget.widget.merge;
+
+        // Check if we need spacing (when no separators configured, add space for visual separation)
+        const needsSpacing = i < widgetElements.length - 1 && separators.length === 0 && nextWidget && !widget.widget.merge;
 
         let widgetContent = '';
 
@@ -324,12 +346,28 @@ function renderPowerlineStatusLine(
 
         // Add separator between widgets (not after last one, and not if current widget is merged with next)
         if (needsSeparator) {
-            // Determine which separator to use based on global position
-            // Use separators in order, using the last one for all remaining positions
+            // Determine which separator to use
+            // For zigzag effect: use "/" for even lines and "\" for odd lines
             const globalIndex = globalSeparatorOffset + i;
-            const separatorIndex = Math.min(globalIndex, separators.length - 1);
-            const separator = separators[separatorIndex] ?? '\uE0B0';
-            const shouldInvert = invertBgs[separatorIndex] ?? false;
+            let separatorIndex = Math.min(globalIndex, separators.length - 1);
+            let separator = separators[separatorIndex] ?? '\uE0B0';
+            let shouldInvert = invertBgs[separatorIndex] ?? false;
+
+            // Wave mode: if separators array has 2+ items, alternate by line AND column
+            // Creates a wave/checkerboard pattern across the entire statusline
+            // Line 0: sep0, sep1, sep0, sep1, ... (starts with sep0)
+            // Line 1: sep1, sep0, sep1, sep0, ... (starts with sep1)
+            // Line 2: sep0, sep1, sep0, sep1, ... (starts with sep0)
+            if (separators.length >= 2) {
+                const effectiveLineIndex = context.lineIndex ?? lineIndex;
+                // Alternate based on (line + separatorCount) - uses actual separator position, not widget index
+                const isEvenCell = (effectiveLineIndex + separatorCount) % 2 === 0;
+                separator = isEvenCell ? (separators[0] ?? '\uE0B0') : (separators[1] ?? '\uE0B2');
+                shouldInvert = isEvenCell ? (invertBgs[0] ?? false) : (invertBgs[1] ?? true);
+            }
+
+            // Increment separator counter for proper wave pattern tracking
+            separatorCount++;
 
             // Powerline separator coloring:
             // Normal (not inverted):
@@ -410,6 +448,31 @@ function renderPowerlineStatusLine(
             if (shouldBold) {
                 result += '\x1b[22m';
             }
+        } else if (needsSpacing) {
+            // No separators configured - add a trailing space to current widget for visual separation
+            // The space uses the current widget's background color (padding at end of widget)
+            if (widget.bgColor) {
+                const bgCode = getColorAnsiCode(widget.bgColor, colorLevel, true);
+                result += bgCode + ' ' + '\x1b[49m';
+            } else {
+                result += ' ';
+            }
+
+            // Reset bold after spacing if it was set
+            if (shouldBold) {
+                result += '\x1b[22m';
+            }
+        }
+    }
+
+    // Add trailing padding to last widget when no separators and no end cap
+    if (separators.length === 0 && !endCap && widgetElements.length > 0) {
+        const lastWidget = widgetElements[widgetElements.length - 1];
+        if (lastWidget?.bgColor && !lastWidget.widget.merge) {
+            const bgCode = getColorAnsiCode(lastWidget.bgColor, colorLevel, true);
+            result += bgCode + ' ' + '\x1b[49m';
+        } else if (!lastWidget?.widget.merge) {
+            result += ' ';
         }
     }
 
@@ -553,8 +616,17 @@ export function calculateMaxWidthsFromPreRendered(
     const paddingLength = defaultPadding.length;
 
     for (const preRenderedLine of preRenderedLines) {
+        // v3.8.0: Skip fullWidth lines from column alignment calculations
+        // These are rendered as full-width and shouldn't affect other rows
+        const hasFullWidth = preRenderedLine.some(w => w.widget.fullWidth);
+        if (hasFullWidth) {
+            continue;
+        }
+
+        // IMPORTANT: Don't filter out empty widgets - they need to break the merge chain!
+        // Only filter separators, but keep empty widgets so alignment positions are preserved
         const filteredWidgets = preRenderedLine.filter(
-            w => w.widget.type !== 'separator' && w.widget.type !== 'flex-separator' && w.content
+            w => w.widget.type !== 'separator' && w.widget.type !== 'flex-separator'
         );
 
         let alignmentPos = 0;
@@ -565,14 +637,16 @@ export function calculateMaxWidthsFromPreRendered(
 
             // Calculate the total width for this alignment position
             // If this widget is merged with the next, accumulate their widths
-            let totalWidth = widget.plainLength + (paddingLength * 2);
+            // Empty widgets contribute 0 width but still act as merge chain breakers
+            let totalWidth = widget.content ? widget.plainLength + (paddingLength * 2) : 0;
 
             // Check if this widget merges with the next one(s)
+            // ONLY merge if the current widget has content AND has merge property
             let j = i;
-            while (j < filteredWidgets.length - 1 && filteredWidgets[j]?.widget.merge) {
+            while (j < filteredWidgets.length - 1 && filteredWidgets[j]?.widget.merge && filteredWidgets[j]?.content) {
                 j++;
                 const nextWidget = filteredWidgets[j];
-                if (nextWidget) {
+                if (nextWidget && nextWidget.content) {
                     // For merged widgets, add width but account for padding adjustments
                     // When merging with 'no-padding', don't count padding between widgets
                     if (filteredWidgets[j - 1]?.widget.merge === 'no-padding') {
@@ -660,23 +734,21 @@ export function renderStatusLine(
         const flexMode = settings.flexMode as string;
 
         if (context.isPreview) {
-            // In preview mode, account for box borders and padding (6 chars total)
+            // In preview mode, account for box borders and padding (7 chars total to prevent wrapping)
             if (flexMode === 'full') {
-                terminalWidth = detectedWidth - 6; // Subtract 6 for box borders and padding in preview
+                terminalWidth = detectedWidth - 7;
             } else if (flexMode === 'full-minus-40') {
-                terminalWidth = detectedWidth - 40; // -40 for auto-compact + 3 for preview
+                terminalWidth = detectedWidth - 41;
             } else if (flexMode === 'full-until-compact') {
                 // For preview, always show full width minus preview padding
-                terminalWidth = detectedWidth - 6;
+                terminalWidth = detectedWidth - 7;
             }
         } else {
-            // In actual rendering mode
+            // In actual rendering mode - subtract 7 to prevent wrapping
             if (flexMode === 'full') {
-                // Use full width minus 4 for terminal padding
-                terminalWidth = detectedWidth - 6;
+                terminalWidth = detectedWidth - 7;
             } else if (flexMode === 'full-minus-40') {
-                // Always subtract 41 for auto-compact message
-                terminalWidth = detectedWidth - 40;
+                terminalWidth = detectedWidth - 41;
             } else if (flexMode === 'full-until-compact') {
                 // Check context percentage to decide
                 const threshold = settings.compactThreshold;
@@ -684,10 +756,10 @@ export function renderStatusLine(
 
                 if (contextPercentage >= threshold) {
                     // Context is high, leave space for auto-compact
-                    terminalWidth = detectedWidth - 40;
+                    terminalWidth = detectedWidth - 41;
                 } else {
-                    // Context is low, use full width minus 4 for padding
-                    terminalWidth = detectedWidth - 6;
+                    // Context is low, use full width minus 7 for padding
+                    terminalWidth = detectedWidth - 7;
                 }
             }
         }

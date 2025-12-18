@@ -44,16 +44,35 @@ export class ContextPercentageUsableWidget implements Widget {
         const isInverse = item.metadata?.inverse === 'true';
 
         if (context.isPreview) {
-            const previewValue = isInverse ? '88.4%' : '11.6%';
-            return item.rawValue ? previewValue : `Ctx(u): ${previewValue}`;
+            // Compact preview: integer + warning indicator
+            const previewValue = isInverse ? '12%' : '88%⚠️';
+            return item.rawValue ? previewValue : `📊 ${previewValue}`;
         } else if (context.tokenMetrics) {
             const modelId = context.data?.model?.id;
             const contextConfig = getContextConfig(modelId);
             const usedPercentage = Math.min(100, (context.tokenMetrics.contextLength / contextConfig.usableTokens) * 100);
             const displayPercentage = isInverse ? (100 - usedPercentage) : usedPercentage;
-            return item.rawValue ? `${displayPercentage.toFixed(1)}%` : `Ctx(u): ${displayPercentage.toFixed(1)}%`;
+
+            // Compact display: integer % + warning indicator based on thresholds
+            // For "to limit" mode (isInverse=false): high % = danger
+            // For "safe" mode (isInverse=true): low % = danger
+            const roundedPct = Math.round(displayPercentage);
+            let indicator = '';
+
+            if (isInverse) {
+                // Safe mode: low % = bad (running out of space)
+                if (displayPercentage < 10) indicator = '🔴';
+                else if (displayPercentage < 20) indicator = '⚠️';
+            } else {
+                // To limit mode: high % = bad (approaching limit)
+                if (displayPercentage > 90) indicator = '🔴';
+                else if (displayPercentage > 75) indicator = '⚠️';
+            }
+
+            return item.rawValue ? `${roundedPct}%${indicator}` : `📊 ${roundedPct}%${indicator}`;
         }
-        return null;
+        // Return placeholder when no data available
+        return item.rawValue ? '—' : '📊 —';
     }
 
     getCustomKeybinds(): CustomKeybind[] {

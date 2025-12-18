@@ -11,7 +11,7 @@ type DisplayMode = 'time' | 'progress' | 'progress-short';
 
 export class BlockTimerWidget implements Widget {
     getDefaultColor(): string { return 'yellow'; }
-    getDescription(): string { return 'Shows elapsed time since beginning of current 5hr block'; }
+    getDescription(): string { return 'Shows progress through 5-hour session block (e.g., 35% = 1hr 45m used of 5hr limit)'; }
     getDisplayName(): string { return 'Block Timer'; }
 
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
@@ -97,7 +97,11 @@ export class BlockTimerWidget implements Widget {
                 if (item.rawValue) {
                     return `[${progressBar}] ${percentage}%`;
                 } else {
-                    return `Block [${progressBar}] ${percentage}%`;
+                    // Show time remaining in 5hr block
+                    const remainingMs = sessionDurationMs - elapsedMs;
+                    const remainingHrs = Math.floor(remainingMs / (1000 * 60 * 60));
+                    const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                    return `5hr Block [${progressBar}] ${remainingHrs}h ${remainingMins}m left`;
                 }
             } else {
                 // Time display mode

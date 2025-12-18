@@ -14,6 +14,8 @@ import {
     needsMigration
 } from './migrations';
 
+import { ELITE_DEFAULT_CONFIG } from '../configs/elite-default';
+
 // Use fs.promises directly (always available in modern Node.js)
 const readFile = fs.promises.readFile;
 const writeFile = fs.promises.writeFile;
@@ -36,7 +38,8 @@ async function backupBadSettings(): Promise<void> {
 }
 
 async function writeDefaultSettings(): Promise<Settings> {
-    const defaults = SettingsSchema.parse({});
+    // Use ELITE default config instead of bare schema defaults
+    const defaults = ELITE_DEFAULT_CONFIG;
     const settingsWithVersion = {
         ...defaults,
         version: CURRENT_VERSION
@@ -45,7 +48,7 @@ async function writeDefaultSettings(): Promise<Settings> {
     try {
         await mkdir(CONFIG_DIR, { recursive: true });
         await writeFile(SETTINGS_PATH, JSON.stringify(settingsWithVersion, null, 2), 'utf-8');
-        console.error(`Default settings written to ${SETTINGS_PATH}`);
+        console.error(`ELITE default settings written to ${SETTINGS_PATH}`);
     } catch (error) {
         console.error('Failed to write default settings:', error);
     }

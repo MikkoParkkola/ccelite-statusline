@@ -21,7 +21,7 @@ export class TokensTotalWidget implements Widget {
         } else if (context.tokenMetrics) {
             return item.rawValue ? formatTokens(context.tokenMetrics.totalTokens) : `Total: ${formatTokens(context.tokenMetrics.totalTokens)}`;
         }
-        return null;
+        return item.rawValue ? '—' : 'Total: —';
     }
 
     supportsRawValue(): boolean { return true; }

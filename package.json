@@ -1,10 +1,11 @@
 {
-  "name": "ccstatusline",
-  "version": "2.0.23",
-  "description": "A customizable status line formatter for Claude Code CLI",
+  "name": "ccelite-statusline",
+  "version": "3.0.0",
+  "description": "Elite status line for Claude Code - ROI tracking, system metrics, and Ferrari-class visualization",
   "module": "src/ccstatusline.ts",
   "type": "module",
   "bin": {
+    "ccelite-statusline": "dist/ccstatusline.js",
     "ccstatusline": "dist/ccstatusline.js"
   },
   "files": [
@@ -51,15 +52,18 @@
   "keywords": [
     "claude",
     "claude-code",
+    "claude-elite",
     "cli",
     "status-line",
-    "terminal"
+    "terminal",
+    "roi",
+    "powerline"
   ],
-  "author": "",
+  "author": "Mikko Parkkola",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sirmalloc/ccstatusline.git"
+    "url": "git+https://github.com/mikkoparkko/ccelite-statusline.git"
   },
   "engines": {
     "node": ">=14.0.0"

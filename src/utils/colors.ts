@@ -428,6 +428,54 @@ export const POWERLINE_THEMES: Record<string, PowerlineTheme> = {
             fg: ['hex:1A1B26', 'hex:1A1B26', 'hex:1A1B26', 'hex:1A1B26', 'hex:1A1B26'],
             bg: ['hex:7AA2F7', 'hex:D5D6DB', 'hex:BB9AF7', 'hex:E0AF68', 'hex:7DCFFF']
         }
+    },
+    'elite': {
+        name: 'Elite',
+        description: 'Deep Space + Neon - for Claude Code Elite',
+        1: {
+            fg: ['brightWhite', 'brightWhite', 'black', 'brightWhite', 'black'],
+            bg: ['bgMagenta', 'bgBrightBlack', 'bgBrightCyan', 'bgBlue', 'bgBrightGreen']
+        },
+        2: {
+            fg: ['ansi256:231', 'ansi256:255', 'ansi256:16', 'ansi256:231', 'ansi256:16'],
+            bg: ['ansi256:93', 'ansi256:236', 'ansi256:51', 'ansi256:27', 'ansi256:46']
+        },
+        3: {
+            fg: ['hex:F0F0F0', 'hex:E0E0E0', 'hex:0D1117', 'hex:F0F0F0', 'hex:0D1117'],
+            bg: ['hex:8B5CF6', 'hex:21262D', 'hex:00D9FF', 'hex:3B82F6', 'hex:10B981']
+        }
+    },
+    'elite-neon': {
+        name: 'Elite Neon',
+        description: 'Cyberpunk neon for maximum impact',
+        1: {
+            fg: ['black', 'brightWhite', 'black', 'black', 'brightWhite'],
+            bg: ['bgBrightMagenta', 'bgBrightBlack', 'bgBrightCyan', 'bgBrightYellow', 'bgRed']
+        },
+        2: {
+            fg: ['ansi256:16', 'ansi256:255', 'ansi256:16', 'ansi256:16', 'ansi256:231'],
+            bg: ['ansi256:201', 'ansi256:235', 'ansi256:51', 'ansi256:226', 'ansi256:196']
+        },
+        3: {
+            fg: ['hex:0D1117', 'hex:F0F0F0', 'hex:0D1117', 'hex:0D1117', 'hex:F0F0F0'],
+            bg: ['hex:FF00FF', 'hex:161B22', 'hex:00FFFF', 'hex:FFFF00', 'hex:FF3366']
+        }
+    },
+    'elite-gold': {
+        name: 'Elite Gold',
+        description: 'Luxury gold accents for premium feel',
+        1: {
+            fg: ['black', 'brightYellow', 'black', 'brightWhite', 'black'],
+            bg: ['bgBrightYellow', 'bgBrightBlack', 'bgYellow', 'bgBrightBlack', 'bgBrightWhite']
+        },
+        2: {
+            fg: ['ansi256:16', 'ansi256:220', 'ansi256:16', 'ansi256:231', 'ansi256:16'],
+            bg: ['ansi256:220', 'ansi256:235', 'ansi256:178', 'ansi256:238', 'ansi256:250']
+        },
+        3: {
+            fg: ['hex:0D1117', 'hex:FFD700', 'hex:0D1117', 'hex:F0F0F0', 'hex:0D1117'],
+            bg: ['hex:FFD700', 'hex:161B22', 'hex:DAA520', 'hex:21262D', 'hex:D4D4D4']
+        }
     }
 };
 

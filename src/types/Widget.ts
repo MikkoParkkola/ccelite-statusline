@@ -18,7 +18,9 @@ export const WidgetItemSchema = z.object({
     preserveColors: z.boolean().optional(),
     timeout: z.number().optional(),
     merge: z.union([z.boolean(), z.literal('no-padding')]).optional(),
-    metadata: z.record(z.string(), z.string()).optional()
+    metadata: z.record(z.string(), z.string()).optional(),
+    // v3.8.0: Full-width lines are excluded from column alignment calculations
+    fullWidth: z.boolean().optional()
 });
 
 // Inferred types from Zod schemas

@@ -108,9 +108,19 @@ async function renderMultipleLines(data: StatusJSON) {
     for (let i = 0; i < lines.length; i++) {
         const lineItems = lines[i];
         if (lineItems && lineItems.length > 0) {
-            const lineContext = { ...context, lineIndex: i, globalSeparatorIndex };
             const preRenderedWidgets = preRenderedLines[i] ?? [];
-            const line = renderStatusLine(lineItems, settings, lineContext, preRenderedWidgets, preCalculatedMaxWidths);
+
+            // v3.8.0: Handle fullWidth lines differently - just output content without column alignment
+            const hasFullWidth = lineItems.some(item => item.fullWidth);
+            let line: string;
+
+            if (hasFullWidth) {
+                // For fullWidth lines, just concatenate the pre-rendered content
+                line = preRenderedWidgets.map(w => w.content).filter(Boolean).join('');
+            } else {
+                const lineContext = { ...context, lineIndex: i, globalSeparatorIndex };
+                line = renderStatusLine(lineItems, settings, lineContext, preRenderedWidgets, preCalculatedMaxWidths);
+            }
 
             // Only output the line if it has content (not just ANSI codes)
             // Strip ANSI codes to check if there's actual text

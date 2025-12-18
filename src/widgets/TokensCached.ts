@@ -21,7 +21,7 @@ export class TokensCachedWidget implements Widget {
         } else if (context.tokenMetrics) {
             return item.rawValue ? formatTokens(context.tokenMetrics.cachedTokens) : `Cached: ${formatTokens(context.tokenMetrics.cachedTokens)}`;
         }
-        return null;
+        return item.rawValue ? '—' : 'Cached: —';
     }
 
     supportsRawValue(): boolean { return true; }

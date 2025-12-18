@@ -1,0 +1,88 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {"type": "custom-text", "customText": "◆", "color": "hex:f9e2af", "backgroundColor": "hex:11111b", "bold": true, "merge": "no-padding"},
+      {"type": "custom-text", "customText": "ELITE", "color": "hex:cdd6f4", "backgroundColor": "hex:11111b", "bold": true},
+      {"type": "model", "color": "hex:cba6f7", "backgroundColor": "hex:181825"},
+      {"type": "project-name", "color": "hex:74c7ec", "backgroundColor": "hex:1e1e2e", "rawValue": true},
+      {"type": "custom-text", "customText": "⛁", "color": "hex:89dceb", "backgroundColor": "hex:313244", "merge": "no-padding"},
+      {"type": "disk-space", "color": "hex:89dceb", "backgroundColor": "hex:313244", "rawValue": true},
+      {"type": "session-clock", "color": "hex:bac2de", "backgroundColor": "hex:585b70"}
+    ],
+    [
+      {"type": "custom-text", "customText": "💰", "color": "hex:a6e3a1", "backgroundColor": "hex:11111b", "merge": "no-padding"},
+      {"type": "roi", "color": "hex:a6e3a1", "backgroundColor": "hex:11111b", "rawValue": true},
+      {"type": "custom-text", "customText": "roi", "color": "hex:6c7086", "backgroundColor": "hex:11111b"},
+      {"type": "session-npv", "color": "hex:94e2d5", "backgroundColor": "hex:181825", "rawValue": true},
+      {"type": "custom-text", "customText": "npv", "color": "hex:6c7086", "backgroundColor": "hex:181825"},
+      {"type": "session-cost", "color": "hex:f9e2af", "backgroundColor": "hex:1e1e2e", "rawValue": true},
+      {"type": "annual-roi", "color": "hex:fab387", "backgroundColor": "hex:313244", "rawValue": true},
+      {"type": "custom-text", "customText": "annual", "color": "hex:6c7086", "backgroundColor": "hex:313244"},
+      {"type": "cache-hit-rate", "color": "hex:89b4fa", "backgroundColor": "hex:45475a", "rawValue": true},
+      {"type": "custom-text", "customText": "cache", "color": "hex:6c7086", "backgroundColor": "hex:45475a"}
+    ],
+    [
+      {"type": "custom-text", "customText": "📊", "color": "hex:89b4fa", "backgroundColor": "hex:11111b", "merge": "no-padding"},
+      {"type": "context-percentage-usable", "color": "hex:a6e3a1", "backgroundColor": "hex:11111b", "rawValue": true},
+      {"type": "custom-text", "customText": "ctx", "color": "hex:6c7086", "backgroundColor": "hex:11111b"},
+      {"type": "context-length", "color": "hex:bac2de", "backgroundColor": "hex:181825", "rawValue": true},
+      {"type": "custom-text", "customText": "tok", "color": "hex:6c7086", "backgroundColor": "hex:181825"},
+      {"type": "block-timer", "color": "hex:f9e2af", "backgroundColor": "hex:1e1e2e"},
+      {"type": "tokens-input", "color": "hex:89b4fa", "backgroundColor": "hex:313244", "rawValue": true},
+      {"type": "custom-text", "customText": "in", "color": "hex:6c7086", "backgroundColor": "hex:313244"},
+      {"type": "tokens-output", "color": "hex:fab387", "backgroundColor": "hex:45475a", "rawValue": true},
+      {"type": "custom-text", "customText": "out", "color": "hex:6c7086", "backgroundColor": "hex:45475a"}
+    ],
+    [
+      {"type": "custom-text", "customText": "⚡", "color": "hex:f9e2af", "backgroundColor": "hex:11111b", "merge": "no-padding"},
+      {"type": "git-branch", "color": "hex:fab387", "backgroundColor": "hex:11111b"},
+      {"type": "git-changes", "color": "hex:f38ba8", "backgroundColor": "hex:181825"},
+      {"type": "git-worktree", "color": "hex:f9e2af", "backgroundColor": "hex:1e1e2e"},
+      {"type": "tests-percentage", "color": "hex:a6e3a1", "backgroundColor": "hex:313244", "rawValue": true},
+      {"type": "custom-text", "customText": "cov", "color": "hex:6c7086", "backgroundColor": "hex:313244"},
+      {"type": "security-score", "color": "hex:94e2d5", "backgroundColor": "hex:45475a", "rawValue": true},
+      {"type": "custom-text", "customText": "sec", "color": "hex:6c7086", "backgroundColor": "hex:45475a"},
+      {"type": "tech-debt", "color": "hex:f9e2af", "backgroundColor": "hex:585b70", "rawValue": true},
+      {"type": "custom-text", "customText": "mypy", "color": "hex:6c7086", "backgroundColor": "hex:585b70"}
+    ],
+    [
+      {"type": "custom-text", "customText": "🧠", "color": "hex:cba6f7", "backgroundColor": "hex:11111b", "merge": "no-padding"},
+      {"type": "learning-patterns", "color": "hex:cba6f7", "backgroundColor": "hex:11111b", "rawValue": true},
+      {"type": "custom-text", "customText": "patterns", "color": "hex:6c7086", "backgroundColor": "hex:11111b"},
+      {"type": "hooks-count", "color": "hex:89dceb", "backgroundColor": "hex:181825", "rawValue": true},
+      {"type": "custom-text", "customText": "hooks", "color": "hex:6c7086", "backgroundColor": "hex:181825"},
+      {"type": "mcp-count", "color": "hex:b4befe", "backgroundColor": "hex:1e1e2e", "rawValue": true},
+      {"type": "custom-text", "customText": "mcp", "color": "hex:6c7086", "backgroundColor": "hex:1e1e2e"},
+      {"type": "cpu", "color": "hex:fab387", "backgroundColor": "hex:313244", "rawValue": true},
+      {"type": "custom-text", "customText": "cpu", "color": "hex:6c7086", "backgroundColor": "hex:313244"},
+      {"type": "memory-percent", "color": "hex:f5c2e7", "backgroundColor": "hex:45475a", "rawValue": true},
+      {"type": "custom-text", "customText": "mem", "color": "hex:6c7086", "backgroundColor": "hex:45475a"}
+    ],
+    [
+      {"type": "custom-text", "customText": "✨", "color": "hex:f9e2af", "backgroundColor": "hex:11111b", "merge": "no-padding"},
+      {"type": "codex-routed", "color": "hex:cba6f7", "backgroundColor": "hex:11111b", "rawValue": true},
+      {"type": "custom-text", "customText": "codex", "color": "hex:6c7086", "backgroundColor": "hex:11111b"},
+      {"type": "codex-savings", "color": "hex:a6e3a1", "backgroundColor": "hex:181825", "rawValue": true},
+      {"type": "custom-text", "customText": "saved", "color": "hex:6c7086", "backgroundColor": "hex:181825"},
+      {"type": "hooks-status", "color": "hex:a6e3a1", "backgroundColor": "hex:313244"},
+      {"type": "load-average", "color": "hex:bac2de", "backgroundColor": "hex:45475a", "rawValue": true},
+      {"type": "custom-text", "customText": "load", "color": "hex:6c7086", "backgroundColor": "hex:45475a"}
+    ]
+  ],
+  "flexMode": "full",
+  "compactThreshold": 50,
+  "colorLevel": 3,
+  "defaultSeparator": "",
+  "defaultPadding": " ",
+  "inheritSeparatorColors": true,
+  "globalBold": false,
+  "powerline": {
+    "enabled": true,
+    "separators": [""],
+    "separatorInvertBackground": [true],
+    "startCaps": [""],
+    "endCaps": [""],
+    "autoAlign": true
+  }
+}

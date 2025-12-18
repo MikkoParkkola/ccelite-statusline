@@ -16,11 +16,30 @@ export class ModelWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? 'Claude' : 'Model: Claude';
-        } else if (context.data?.model?.display_name) {
-            return item.rawValue ? context.data.model.display_name : `Model: ${context.data.model.display_name}`;
+            return item.rawValue ? 'Opus 4.5' : 'Model: Opus 4.5';
         }
-        return null;
+
+        // Try display_name first, then parse from id
+        let modelName = context.data?.model?.display_name;
+        if (!modelName && context.data?.model?.id) {
+            // Parse model name from id like "claude-opus-4-5-20250929" -> "Opus 4.5"
+            const id = context.data.model.id;
+            if (id.includes('opus')) {
+                modelName = id.includes('4-5') || id.includes('4.5') ? 'Opus 4.5' : 'Opus';
+            } else if (id.includes('sonnet')) {
+                modelName = id.includes('4-5') || id.includes('4.5') ? 'Sonnet 4.5' : 'Sonnet';
+            } else if (id.includes('haiku')) {
+                modelName = 'Haiku';
+            } else {
+                modelName = 'Claude';
+            }
+        }
+
+        if (modelName) {
+            return item.rawValue ? modelName : `Model: ${modelName}`;
+        }
+        // Return placeholder when no model data available
+        return item.rawValue ? '—' : 'Model: —';
     }
 
     supportsRawValue(): boolean { return true; }
