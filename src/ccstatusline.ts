@@ -60,7 +60,7 @@ async function readStdin(): Promise<string | null> {
 // Auto-refresh stale caches (workaround for PostToolUse hooks not triggering)
 // Uses file-based throttling to prevent concurrent refreshes
 let lastRefreshAttempt = 0;
-const REFRESH_THROTTLE_MS = 10000; // 10 seconds between refresh attempts
+const REFRESH_THROTTLE_MS = 5000; // 5 seconds between refresh attempts (reduced from 10s)
 const MAX_CACHE_AGE_SECONDS = 300; // 5 minutes max staleness
 
 function refreshStaleCaches(): void {
@@ -189,6 +189,32 @@ function refreshStaleCaches(): void {
                     env: process.env
                 });
                 streakChild.unref();
+            }
+
+            // Refresh quota data (usage_cache.json for rate limit widgets)
+            const quotaScript = path.join(homeDir, '.claude', 'bin', 'claude-quota');
+            const quotaCacheFile = path.join(homeDir, '.claude', 'data', 'usage_cache.json');
+            if (fs.existsSync(quotaScript)) {
+                // Check if quota cache is stale (>5 minutes)
+                let quotaStale = true;
+                if (fs.existsSync(quotaCacheFile)) {
+                    try {
+                        const quotaData = JSON.parse(fs.readFileSync(quotaCacheFile, 'utf-8'));
+                        if (quotaData.fetched_at) {
+                            const fetchedAt = new Date(quotaData.fetched_at);
+                            const quotaAge = (Date.now() - fetchedAt.getTime()) / 1000;
+                            quotaStale = quotaAge > MAX_CACHE_AGE_SECONDS;
+                        }
+                    } catch { /* assume stale on error */ }
+                }
+                if (quotaStale) {
+                    const quotaChild = spawn(quotaScript, ['refresh'], {
+                        detached: true,
+                        stdio: 'ignore',
+                        env: process.env
+                    });
+                    quotaChild.unref();
+                }
             }
         }
     } catch {
