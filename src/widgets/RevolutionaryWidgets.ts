@@ -2560,8 +2560,8 @@ function getEliteMetrics(): {
     totalTasks: number;
     routingCount: number;
 } {
-    // Read from comprehensive elite_metrics.json
-    const eliteMetricsPath = `${PATHS.claudeDir}/data/elite_metrics.json`;
+    // Read from elite/metrics.json (canonical, actively updated)
+    const eliteMetricsPath = `${PATHS.claudeDir}/data/elite/metrics.json`;
     const metrics = readCachedJSON<EliteMetricsData>(eliteMetricsPath, {});
 
     // Read from session_metrics.json for actual cost
@@ -2627,7 +2627,7 @@ export class EliteSavingsWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '-$0.48' : '📈 Saved: -$0.48';
+            return item.rawValue ? '+44% quota' : '📈 Elite: +44% quota';
         }
 
         const metrics = getEliteMetrics();
@@ -2649,12 +2649,17 @@ export class EliteSavingsWidget implements Widget {
             return `-$${usd.toFixed(2)}`;
         };
 
-        // Boost is pre-calculated: savings / actual_cost
-        // e.g., saved $0.48 on $2.50 spent = +19% more effective quota
-        const boostPct = metrics.boostPercent;
+        // Use context data for actual cost (more accurate than stale file)
+        const actualCost = context.data?.cost?.total_cost_usd ?? metrics.actualCostUsed;
+        const wouldHaveCost = actualCost + eliteSaved;
 
-        // Get pre-calculated percentages
-        const savingsPct = metrics.savingsPercent;  // Negative = good (cost savings)
+        // Recalculate percentages with fresh data
+        const boostPct = actualCost > 0
+            ? Math.round(((wouldHaveCost / actualCost) - 1) * 100)
+            : metrics.boostPercent;
+        const savingsPct = wouldHaveCost > 0
+            ? Math.round((-eliteSaved / wouldHaveCost) * 100)
+            : metrics.savingsPercent;
 
         if (item.rawValue) {
             // Compact format - BILLING AWARE with unit clarification

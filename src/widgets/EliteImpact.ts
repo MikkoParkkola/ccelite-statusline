@@ -185,21 +185,21 @@ export class EliteImpactCostWidget implements Widget {
 
 /**
  * Elite Value Breakdown - shows Elite-specific contributions
- * C: Cost saved ($) from routing/compression/semantic-cache
+ * C: Cost saved ($) with % of what would have been spent without Elite
  * Q: Bugs/issues prevented by hooks and validation gates
- * Example: "C:$35 Q:5"
+ * Example: "C:$35/44% Q:5"
  */
 export class EliteTotalValueWidget implements Widget {
     getDefaultColor(): string { return 'brightGreen'; }
-    getDescription(): string { return 'Elite value: C=Cost saved ($), Q=Bugs prevented'; }
+    getDescription(): string { return 'Elite value: C=Cost saved ($/%), Q=Bugs prevented'; }
     getDisplayName(): string { return 'Elite Value Breakdown'; }
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
-        return { displayText: 'C:$35 Q:5' };
+        return { displayText: 'C:$35/44% Q:5' };
     }
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? 'C:$35 Q:5' : 'Value $1.4K';
+            return item.rawValue ? 'C:$35/44% Q:5' : 'Value $1.4K';
         }
 
         const metrics = getEliteMetrics();
@@ -210,10 +210,23 @@ export class EliteTotalValueWidget implements Widget {
         const secIssues = metrics?.elite?.quality?.security_issues_prevented ?? 0;
         const totalBugs = bugsPrevent + secIssues;
 
+        // Get actual session cost to calculate savings percentage
+        // Only show % when we have valid session cost data (actualCost > 0)
+        const actualCost = context.data?.cost?.total_cost_usd ?? 0;
+        const wouldHaveCost = actualCost + costSaved;
+        // Only calculate percentage when we have real session cost data
+        const savingsPct = actualCost > 0 && wouldHaveCost > 0
+            ? Math.round((costSaved / wouldHaveCost) * 100)
+            : 0;
+
         // rawValue mode: Show Elite-specific breakdown
         if (item.rawValue) {
             const parts: string[] = [];
-            if (costSaved > 0) parts.push(`C:${formatCost(costSaved)}`);
+            if (costSaved > 0) {
+                const costStr = formatCost(costSaved);
+                // Only show percentage if we have valid session cost data
+                parts.push(savingsPct > 0 ? `C:${costStr}/${savingsPct}%` : `C:${costStr}`);
+            }
             if (totalBugs > 0) parts.push(`Q:${totalBugs}`);
             return parts.length > 0 ? parts.join(' ') : '—';
         }
