@@ -28,8 +28,12 @@ interface ROIReport {
     annual_value?: number;
     monthly_value?: number;
     total_value?: number;
+    cumulative_value?: number;
     roi_multiplier?: number;
     sessions_tracked?: number;
+    data_days?: number;
+    data_points?: number;
+    insufficient_data?: boolean;
     timestamp?: string;
 }
 
@@ -213,23 +217,36 @@ export class AnnualROIWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '$685K' : '💎 $685K';
+            return item.rawValue ? '$685K/yr' : '💎 $685K/yr';
         }
 
         const report = getROIReport();
+
+        // Check for insufficient data flag
+        if (report?.insufficient_data) {
+            // Not enough historical data to project annual value
+            // Show cumulative if available, otherwise hide
+            const cumulative = report.cumulative_value;
+            if (item.rawValue) {
+                return cumulative && cumulative > 0 ? `~${formatMoney(cumulative)}` : '—';
+            }
+            // In full mode, don't show unreliable projections
+            return null;
+        }
+
         const value = report?.annual_value ?? (report?.monthly_value ? report.monthly_value * 12 : null);
         const formatted = value && value > 0 ? formatMoney(value) : null;
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            return formatted ?? '—';
+            return formatted ? `${formatted}/yr` : '—';
         }
 
         // Full mode: can return null
         if (!formatted) {
             return null;
         }
-        return `💎 Annual: ${formatted}`;
+        return `💎 Projected: ${formatted}/yr`;
     }
 
     supportsRawValue(): boolean { return true; }
