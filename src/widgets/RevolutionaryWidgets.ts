@@ -2501,6 +2501,12 @@ interface CacheMetrics {
     saved_tokens?: number;
 }
 
+interface CodexMetrics {
+    total_saved_tokens?: number;
+    total_routed?: number;
+    cost_saved_usd?: number;
+}
+
 // Comprehensive Elite metrics structure (from elite_metrics_tracker.py)
 interface EliteMetricsData {
     baseline?: {
