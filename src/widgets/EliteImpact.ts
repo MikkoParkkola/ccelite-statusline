@@ -184,37 +184,36 @@ export class EliteImpactCostWidget implements Widget {
 }
 
 /**
- * Elite Value Breakdown - shows C/T/Q with natural units (no sum)
- * C: Cost saved ($), T: Speedup (×), Q: Bugs prevented
- * Example: "C:$35 T:4.2× Q:5"
+ * Elite Value Breakdown - shows Elite-specific contributions
+ * C: Cost saved ($) from routing/compression/semantic-cache
+ * Q: Bugs/issues prevented by hooks and validation gates
+ * Example: "C:$35 Q:5"
  */
 export class EliteTotalValueWidget implements Widget {
     getDefaultColor(): string { return 'brightGreen'; }
-    getDescription(): string { return 'Elite value: C=Cost saved ($), T=Speedup (×), Q=Bugs prevented'; }
+    getDescription(): string { return 'Elite value: C=Cost saved ($), Q=Bugs prevented'; }
     getDisplayName(): string { return 'Elite Value Breakdown'; }
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
-        return { displayText: 'C:$35 T:4.2× Q:5' };
+        return { displayText: 'C:$35 Q:5' };
     }
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? 'C:$35 T:4.2× Q:5' : 'Value $1.4K';
+            return item.rawValue ? 'C:$35 Q:5' : 'Value $1.4K';
         }
 
         const metrics = getEliteMetrics();
 
-        // Get raw metrics with natural units
+        // Elite-specific metrics only
         const costSaved = metrics?.totals?.cost_saved_usd ?? 0;
-        const speedup = metrics?.elite?.speed?.parallel_speedup ?? 0;
         const bugsPrevent = metrics?.elite?.quality?.bugs_detected_pre_commit ?? 0;
         const secIssues = metrics?.elite?.quality?.security_issues_prevented ?? 0;
         const totalBugs = bugsPrevent + secIssues;
 
-        // rawValue mode: Show breakdown with natural units (no sum)
+        // rawValue mode: Show Elite-specific breakdown
         if (item.rawValue) {
             const parts: string[] = [];
             if (costSaved > 0) parts.push(`C:${formatCost(costSaved)}`);
-            if (speedup > 1) parts.push(`T:${speedup.toFixed(1)}×`);
             if (totalBugs > 0) parts.push(`Q:${totalBugs}`);
             return parts.length > 0 ? parts.join(' ') : '—';
         }
