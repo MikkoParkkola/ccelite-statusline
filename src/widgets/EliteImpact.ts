@@ -184,47 +184,45 @@ export class EliteImpactCostWidget implements Widget {
 }
 
 /**
- * Total Elite Value (cost + time + quality) with breakdown
- * Example: "$1.4K (C:$35 T:$520 Q:$800)" showing cost/time/quality components
+ * Elite Value Breakdown - shows C/T/Q with natural units (no sum)
+ * C: Cost saved ($), T: Speedup (×), Q: Bugs prevented
+ * Example: "C:$35 T:4.2× Q:5"
  */
 export class EliteTotalValueWidget implements Widget {
     getDefaultColor(): string { return 'brightGreen'; }
-    getDescription(): string { return 'Total elite value with breakdown: C=Cost saved, T=Time value, Q=Quality value'; }
-    getDisplayName(): string { return 'Elite Total Value'; }
+    getDescription(): string { return 'Elite value: C=Cost saved ($), T=Speedup (×), Q=Bugs prevented'; }
+    getDisplayName(): string { return 'Elite Value Breakdown'; }
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
-        return { displayText: '$1.4K (C:$35 T:$520 Q:$800)' };
+        return { displayText: 'C:$35 T:4.2× Q:5' };
     }
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '$1.4K (C:$35 T:$520 Q:$800)' : 'Value $1.4K';
+            return item.rawValue ? 'C:$35 T:4.2× Q:5' : 'Value $1.4K';
         }
 
         const metrics = getEliteMetrics();
-        const totalValue = metrics?.totals?.total_elite_value_usd ?? 0;
-        const costValue = metrics?.totals?.cost_saved_usd ?? 0;
-        const timeValue = metrics?.totals?.time_value_usd ?? 0;
-        const qualityValue = metrics?.totals?.quality_value_usd ?? 0;
 
-        // rawValue mode: Show breakdown
+        // Get raw metrics with natural units
+        const costSaved = metrics?.totals?.cost_saved_usd ?? 0;
+        const speedup = metrics?.elite?.speed?.parallel_speedup ?? 0;
+        const bugsPrevent = metrics?.elite?.quality?.bugs_detected_pre_commit ?? 0;
+        const secIssues = metrics?.elite?.quality?.security_issues_prevented ?? 0;
+        const totalBugs = bugsPrevent + secIssues;
+
+        // rawValue mode: Show breakdown with natural units (no sum)
         if (item.rawValue) {
-            if (totalValue <= 0) return '—';
-            const total = formatCost(totalValue);
-            // Compact breakdown: C=Cost, T=Time, Q=Quality
-            const c = costValue > 0 ? `C:${formatCost(costValue).replace('$', '$')}` : '';
-            const t = timeValue > 0 ? `T:${formatCost(timeValue).replace('$', '$')}` : '';
-            const q = qualityValue > 0 ? `Q:${formatCost(qualityValue).replace('$', '$')}` : '';
-            const breakdown = [c, t, q].filter(x => x).join(' ');
-            return breakdown ? `${total} (${breakdown})` : total;
+            const parts: string[] = [];
+            if (costSaved > 0) parts.push(`C:${formatCost(costSaved)}`);
+            if (speedup > 1) parts.push(`T:${speedup.toFixed(1)}×`);
+            if (totalBugs > 0) parts.push(`Q:${totalBugs}`);
+            return parts.length > 0 ? parts.join(' ') : '—';
         }
 
-        // Full mode: can return null
-        if (totalValue <= 0) {
-            return null;
-        }
-
-        const formatted = formatCost(totalValue);
-        return `Value ${formatted}`;
+        // Full mode: show total value
+        const totalValue = metrics?.totals?.total_elite_value_usd ?? 0;
+        if (totalValue <= 0) return null;
+        return `Value ${formatCost(totalValue)}`;
     }
 
     supportsRawValue(): boolean { return true; }

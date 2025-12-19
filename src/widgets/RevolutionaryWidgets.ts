@@ -890,15 +890,15 @@ export class BugPreventionWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '23 caught' : '🐛 23 bugs caught │ $46K saved';
+            return item.rawValue ? '4' : '🐛 23 bugs caught │ $46K saved';
         }
 
         const errorsRecovered = getErrorRecoveryCount();
         const savedValue = formatMoney(errorsRecovered * 2000);
 
-        // rawValue: just "N caught" - label provides "🐛 Bugs:" context
+        // rawValue: just number - label "🐛 Bugs Caught:" provides context
         return item.rawValue
-            ? `${errorsRecovered} caught`
+            ? `${errorsRecovered}`
             : `🐛 ${errorsRecovered} bugs caught │ ${savedValue} saved`;
     }
 
