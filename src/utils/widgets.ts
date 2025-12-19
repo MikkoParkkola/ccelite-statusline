@@ -134,9 +134,8 @@ const widgetRegistry = new Map<WidgetItemType, Widget>([
     ['elite-savings', new widgets.EliteSavingsWidget()],
 
     // v3.9.0: 📊 ELITE IMPACT - Comprehensive elite framework measurement
-    // TEMPORARILY DISABLED - EliteImpact.ts corrupted, needs rebuild
-    // ['elite-cost', new widgets.EliteImpactCostWidget()],
-    // ['elite-value', new widgets.EliteTotalValueWidget()],
+    ['elite-cost', new widgets.EliteImpactCostWidget()],
+    ['elite-value', new widgets.EliteTotalValueWidget()],
     // ['elite-compression', new widgets.EliteCompressionRatioWidget()],
     // ['elite-routing-count', new widgets.EliteRoutingCountWidget()],
     // ['elite-speedup', new widgets.EliteSpeedupWidget()],
