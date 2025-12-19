@@ -258,19 +258,23 @@ export class CacheHitRateWidget implements Widget {
 
         const metrics = getCacheMetrics();
         if (metrics) {
-            // Check for hit_rate (could be percentage 0-100 or decimal 0-1)
-            if (metrics.hit_rate !== undefined) {
-                rate = metrics.hit_rate <= 1 ? metrics.hit_rate * 100 : metrics.hit_rate;
-            } else if (metrics.cache_hit_rate !== undefined) {
-                // cache_hit_rate is typically decimal 0-1
-                rate = metrics.cache_hit_rate <= 1 ? metrics.cache_hit_rate * 100 : metrics.cache_hit_rate;
-            } else {
-                // Calculate from hits/total
-                const total = metrics.total_requests ?? metrics.total_queries ?? 0;
-                const hits = metrics.cache_hits ?? 0;
-                if (total > 0 && hits > 0) {
-                    rate = (hits / total) * 100;
-                }
+            // Priority 1: Calculate from actual counts (most reliable)
+            const total = metrics.total_requests ?? metrics.total_queries ?? 0;
+            const hits = metrics.cache_hits ?? 0;
+            if (total > 0 && hits > 0) {
+                rate = (hits / total) * 100;
+            }
+            // Priority 2: Use hit_rate field (stored as percentage 0-100)
+            else if (metrics.hit_rate !== undefined && metrics.hit_rate >= 0) {
+                // hit_rate is stored as percentage (0-100), clamp to valid range
+                rate = Math.min(100, Math.max(0, metrics.hit_rate));
+            }
+            // Priority 3: cache_hit_rate (typically decimal 0-1, convert to percentage)
+            else if (metrics.cache_hit_rate !== undefined && metrics.cache_hit_rate >= 0) {
+                // cache_hit_rate is decimal (0-1), convert to percentage
+                rate = metrics.cache_hit_rate > 1
+                    ? Math.min(100, metrics.cache_hit_rate)  // Already percentage, clamp
+                    : metrics.cache_hit_rate * 100;          // Convert from decimal
             }
         }
 

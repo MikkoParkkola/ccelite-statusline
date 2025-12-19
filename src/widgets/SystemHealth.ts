@@ -8,32 +8,63 @@ import type {
     WidgetItem
 } from '../types/Widget';
 
-function getCPUUsage(): number {
-    const cpus = os.cpus();
-    if (cpus.length === 0) return 0;
+// ============================================================================
+// Caching - System calls are expensive, cache for 5 seconds
+// ============================================================================
 
-    let totalIdle = 0;
-    let totalTick = 0;
+interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
+}
 
-    for (const cpu of cpus) {
-        for (const type in cpu.times) {
-            totalTick += cpu.times[type as keyof typeof cpu.times];
-        }
-        totalIdle += cpu.times.idle;
+const systemCache = new Map<string, CacheEntry<unknown>>();
+const SYSTEM_CACHE_TTL = 5000; // 5 seconds
+
+function getCached<T>(key: string, fetcher: () => T): T {
+    const now = Date.now();
+    const cached = systemCache.get(key) as CacheEntry<T> | undefined;
+    if (cached && (now - cached.timestamp) < SYSTEM_CACHE_TTL) {
+        return cached.data;
     }
+    const data = fetcher();
+    systemCache.set(key, { data, timestamp: now });
+    return data;
+}
 
-    return Math.round(100 - (totalIdle / totalTick * 100));
+// ============================================================================
+// System Metrics (cached)
+// ============================================================================
+
+function getCPUUsage(): number {
+    return getCached('cpu', () => {
+        const cpus = os.cpus();
+        if (cpus.length === 0) return 0;
+
+        let totalIdle = 0;
+        let totalTick = 0;
+
+        for (const cpu of cpus) {
+            for (const type in cpu.times) {
+                totalTick += cpu.times[type as keyof typeof cpu.times];
+            }
+            totalIdle += cpu.times.idle;
+        }
+
+        return Math.round(100 - (totalIdle / totalTick * 100));
+    });
 }
 
 function getMemoryUsage(): { used: number; total: number; percentage: number } {
-    const total = os.totalmem();
-    const free = os.freemem();
-    const used = total - free;
-    return {
-        used,
-        total,
-        percentage: Math.round((used / total) * 100)
-    };
+    return getCached('memory', () => {
+        const total = os.totalmem();
+        const free = os.freemem();
+        const used = total - free;
+        return {
+            used,
+            total,
+            percentage: Math.round((used / total) * 100)
+        };
+    });
 }
 
 function formatBytes(bytes: number): string {

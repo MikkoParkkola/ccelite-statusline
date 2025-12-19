@@ -22,8 +22,27 @@ import type {
 } from '../types/Widget';
 
 // ============================================================================
-// Data Readers
+// Data Readers with Caching
 // ============================================================================
+
+// Simple cache to avoid expensive operations on every render
+interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
+}
+
+const dataCache = new Map<string, CacheEntry<unknown>>();
+
+function getCached<T>(key: string, ttlMs: number, fetcher: () => T): T {
+    const now = Date.now();
+    const cached = dataCache.get(key) as CacheEntry<T> | undefined;
+    if (cached && (now - cached.timestamp) < ttlMs) {
+        return cached.data;
+    }
+    const data = fetcher();
+    dataCache.set(key, { data, timestamp: now });
+    return data;
+}
 
 interface DiskInfo {
     available: number;
@@ -32,52 +51,57 @@ interface DiskInfo {
     formatted: string;
 }
 
+// Cache disk info for 30 seconds (shell command is expensive)
+const DISK_CACHE_TTL = 30000;
+
 function getDiskSpace(): DiskInfo | null {
-    try {
-        // Use df command for macOS/Linux compatibility
-        const output = execSync('df -h "$HOME" 2>/dev/null', {
-            encoding: 'utf-8',
-            timeout: 1000,
-            env: { ...process.env, HOME: os.homedir() }
-        });
+    return getCached('diskSpace', DISK_CACHE_TTL, () => {
+        try {
+            // Use df command for macOS/Linux compatibility
+            const output = execSync('df -h "$HOME" 2>/dev/null', {
+                encoding: 'utf-8',
+                timeout: 1000,
+                env: { ...process.env, HOME: os.homedir() }
+            });
 
-        const lines = output.trim().split('\n');
-        if (lines.length < 2) return null;
+            const lines = output.trim().split('\n');
+            if (lines.length < 2) return null;
 
-        // Parse: Filesystem Size Used Avail Capacity ...
-        const dataLine = lines[1];
-        if (!dataLine) return null;
-        const parts = dataLine.split(/\s+/);
-        if (parts.length < 5) return null;
+            // Parse: Filesystem Size Used Avail Capacity ...
+            const dataLine = lines[1];
+            if (!dataLine) return null;
+            const parts = dataLine.split(/\s+/);
+            if (parts.length < 5) return null;
 
-        const available = parts[3] ?? ''; // e.g., "84Gi" or "147G"
-        const capacityStr = (parts[4] ?? '0').replace('%', ''); // e.g., "45"
-        const percentUsed = parseInt(capacityStr, 10);
+            const available = parts[3] ?? ''; // e.g., "84Gi" or "147G"
+            const capacityStr = (parts[4] ?? '0').replace('%', ''); // e.g., "45"
+            const percentUsed = parseInt(capacityStr, 10);
 
-        // Parse available space to bytes for calculations
-        let availableBytes = 0;
-        const match = available.match(/^([\d.]+)([KMGT]i?)?$/i);
-        if (match && match[1]) {
-            const num = parseFloat(match[1]);
-            const unit = (match[2] || '').toUpperCase().replace('I', '');
-            const multipliers: Record<string, number> = {
-                'K': 1024,
-                'M': 1024 * 1024,
-                'G': 1024 * 1024 * 1024,
-                'T': 1024 * 1024 * 1024 * 1024
+            // Parse available space to bytes for calculations
+            let availableBytes = 0;
+            const match = available.match(/^([\d.]+)([KMGT]i?)?$/i);
+            if (match && match[1]) {
+                const num = parseFloat(match[1]);
+                const unit = (match[2] || '').toUpperCase().replace('I', '');
+                const multipliers: Record<string, number> = {
+                    'K': 1024,
+                    'M': 1024 * 1024,
+                    'G': 1024 * 1024 * 1024,
+                    'T': 1024 * 1024 * 1024 * 1024
+                };
+                availableBytes = num * (multipliers[unit] || 1);
+            }
+
+            return {
+                available: availableBytes,
+                total: 0, // Not easily available from df
+                percentUsed,
+                formatted: available || '—'
             };
-            availableBytes = num * (multipliers[unit] || 1);
+        } catch {
+            return null;
         }
-
-        return {
-            available: availableBytes,
-            total: 0, // Not easily available from df
-            percentUsed,
-            formatted: available || '—'
-        };
-    } catch {
-        return null;
-    }
+    });
 }
 
 interface QualityMetrics {
@@ -361,6 +385,7 @@ export class SecurityScoreWidget implements Widget {
  * Tech Debt Widget - Shows combined tech debt: mypy + TODO + lint
  * Example output: "M:3.3K T:11" or "📋 M:3.3K T:11 L:0"
  * M = mypy type errors, T = TODO/FIXME comments, L = lint (ruff) errors
+ * Note: Tracks ~/.claude/hooks directory (not current project)
  */
 export class TechDebtWidget implements Widget {
     getDefaultColor(): string { return 'yellow'; }

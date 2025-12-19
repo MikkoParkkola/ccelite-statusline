@@ -826,9 +826,10 @@ export class LifetimeWealthWidget implements Widget {
         }
 
         const roi = getROIData();
-        const history = getHistoryStats();
-        const totalLifetime = roi.total_lifetime * (history.sessions / Math.max(1, roi.sessions_count));
-        const ratePerMin = Math.round(roi.latest_value / 60);
+        // Use actual tracked lifetime value - no speculative extrapolation
+        const totalLifetime = roi.total_lifetime;
+        // Rate based on latest session value, prorated to per-minute
+        const ratePerMin = roi.latest_value > 0 ? Math.round(roi.latest_value / 60) : 0;
 
         const formatted = formatMoney(totalLifetime);
         const rate = ratePerMin > 0 ? ` +$${ratePerMin}/min ▲` : '';
@@ -1772,6 +1773,58 @@ interface UsageQuota {
     seven_day_sonnet?: { utilization: number; resets_at: string | null };
     seven_day_opus?: { utilization: number; resets_at: string | null } | null;
     fetched_at?: string;
+    // Account info to detect stale data after account switch
+    org_id?: string;
+    user_email?: string;
+}
+
+// OAuth account from ~/.claude.json (updated by `claude login`)
+interface OAuthAccount {
+    accountUuid: string;
+    emailAddress: string;
+    organizationUuid: string;
+    displayName?: string;
+}
+
+// Get current OAuth account from Claude Code config
+function getOAuthAccount(): OAuthAccount | null {
+    try {
+        const oauthPath = path.join(os.homedir(), '.claude.json');
+        if (fs.existsSync(oauthPath)) {
+            const data = JSON.parse(fs.readFileSync(oauthPath, 'utf-8'));
+            return data.oauthAccount || null;
+        }
+    } catch { /* ignore */ }
+    return null;
+}
+
+// Check if quota data is for the current OAuth account
+function isQuotaDataStale(quota: UsageQuota): { stale: boolean; reason?: string; ageHours?: number } {
+    const oauth = getOAuthAccount();
+
+    // Check data age
+    let ageHours = 0;
+    if (quota.fetched_at) {
+        const fetchedAt = new Date(quota.fetched_at);
+        ageHours = (Date.now() - fetchedAt.getTime()) / (1000 * 60 * 60);
+    }
+
+    // If no OAuth account, can't verify - trust the data but note age
+    if (!oauth) {
+        return { stale: ageHours > 1, reason: ageHours > 1 ? `${ageHours.toFixed(1)}h old` : undefined, ageHours };
+    }
+
+    // Check org_id mismatch (quota is for different account)
+    if (quota.org_id && quota.org_id !== oauth.organizationUuid) {
+        return { stale: true, reason: 'wrong account', ageHours };
+    }
+
+    // Data is stale if age > 1 hour
+    if (ageHours > 1) {
+        return { stale: true, reason: `${ageHours.toFixed(1)}h old`, ageHours };
+    }
+
+    return { stale: false, ageHours };
 }
 
 interface RateLimits {
@@ -1857,19 +1910,21 @@ export class SessionQuotaWidget implements Widget {
         // Try API quota first (most accurate if available)
         const apiQuota = readCachedJSON<UsageQuota>(PATHS.usageQuota, {});
 
+        // Check for stale/wrong account data
+        const staleCheck = isQuotaDataStale(apiQuota);
+
         let utilization = 0;
         let resetTime = 'continuous';
-        let usedHours = 0;
-        let remainingHours = 5;
 
         // Check if API quota has real data
         // Note: API returns utilization as 0-100 (percentage), not 0-1
         if (apiQuota.five_hour) {
             utilization = apiQuota.five_hour.utilization || 0;
-            usedHours = (utilization / 100) * 5;
-            remainingHours = 5 - usedHours;
 
             const color = getQuotaColor(utilization);
+
+            // Add stale warning if data is old or for wrong account
+            const staleWarning = staleCheck.stale ? ` ⚠️${staleCheck.reason}` : '';
 
             if (apiQuota.five_hour.resets_at) {
                 resetTime = formatResetTime(apiQuota.five_hour.resets_at);
@@ -1878,13 +1933,13 @@ export class SessionQuotaWidget implements Widget {
                 // Show clearer messaging: "fresh ⟳" means just reset vs "↻ Xh" means resets in X hours
                 const displayTime = justReset ? 'fresh' : `↻ ${resetTime}`;
                 return item.rawValue
-                    ? `${Math.round(utilization)}%`
-                    : `${color} 5h ${Math.round(utilization)}% ${displayTime}`;
+                    ? `${Math.round(utilization)}%${staleWarning}`
+                    : `${color} 5h ${Math.round(utilization)}% ${displayTime}${staleWarning}`;
             } else {
                 // No reset time means rolling window at low/zero usage
                 return item.rawValue
-                    ? `${Math.round(utilization)}%`
-                    : `${color} 5h ${Math.round(utilization)}% (rolling)`;
+                    ? `${Math.round(utilization)}%${staleWarning}`
+                    : `${color} 5h ${Math.round(utilization)}% (rolling)${staleWarning}`;
             }
         }
 
@@ -1918,6 +1973,10 @@ export class WeeklyQuotaWidget implements Widget {
 
         const apiQuota = readCachedJSON<UsageQuota>(PATHS.usageQuota, {});
 
+        // Check for stale/wrong account data
+        const staleCheck = isQuotaDataStale(apiQuota);
+        const staleWarning = staleCheck.stale ? ` ⚠️${staleCheck.reason}` : '';
+
         // Check if API quota has real data
         // Note: API returns utilization as 0-100 (percentage), not 0-1
         if (apiQuota.seven_day) {
@@ -1930,13 +1989,13 @@ export class WeeklyQuotaWidget implements Widget {
                 const justReset = resetTime === 'now';
                 const displayTime = justReset ? 'fresh' : `↻ ${resetTime}`;
                 return item.rawValue
-                    ? `${Math.round(utilization)}%`
-                    : `${color} 7d ${Math.round(utilization)}% ${displayTime}`;
+                    ? `${Math.round(utilization)}%${staleWarning}`
+                    : `${color} 7d ${Math.round(utilization)}% ${displayTime}${staleWarning}`;
             } else {
                 // API has data but no reset time
                 return item.rawValue
-                    ? `${Math.round(utilization)}%`
-                    : `${color} 7d ${Math.round(utilization)}% (rolling)`;
+                    ? `${Math.round(utilization)}%${staleWarning}`
+                    : `${color} 7d ${Math.round(utilization)}% (rolling)${staleWarning}`;
             }
         }
 
@@ -3611,7 +3670,7 @@ export class EvolutionVectorWidget implements Widget {
 
 const HELP_TIPS = [
     '💡 5h/17% = 5-hour session quota | 7d/67% = weekly quota | fresh = just reset',
-    '💡 NPV:$420 = annual value | Cost:$6 = API spend | ROI:84× = return multiplier',
+    '💡 NPV:$156K = session value | Cost:$44 = API spend | ROI:3.6K× = return multiplier',
     '💡 Cache:84% = Claude cache hits | Saved:1.4M = tokens saved by Elite compression',
     '💡 Codex:47 = tasks routed to cheaper model | Ptrn:24 = learned code patterns',
     '💡 Acc:75% = prediction accuracy | Sec:100% = security score (0-100% scale)',
@@ -3634,7 +3693,7 @@ export class HelpLegendWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return '💡 5h/17% = session limit, quota used | NPV:$420 = value/yr | 🟢🟡🔴 = health';
+            return '💡 5h/17% = session limit, quota used | NPV:$156K = session value | 🟢🟡🔴 = health';
         }
 
         // Rotate every 30 seconds based on current time

@@ -44,16 +44,21 @@ export class ContextPercentageWidget implements Widget {
         const isInverse = item.metadata?.inverse === 'true';
 
         if (context.isPreview) {
-            const previewValue = isInverse ? '90.7% ctx free' : '9.3% ctx used';
-            return item.rawValue ? previewValue : `📊 ${previewValue}`;
+            // rawValue: just percentage (label provides context)
+            // full: self-documenting with suffix
+            const previewPct = isInverse ? '90.7%' : '9.3%';
+            const previewFull = isInverse ? '90.7% ctx free' : '9.3% ctx used';
+            return item.rawValue ? previewPct : `📊 ${previewFull}`;
         } else if (context.tokenMetrics) {
             const modelId = context.data?.model?.id;
             const contextConfig = getContextConfig(modelId);
             const usedPercentage = Math.min(100, (context.tokenMetrics.contextLength / contextConfig.maxTokens) * 100);
             const displayPercentage = isInverse ? (100 - usedPercentage) : usedPercentage;
-            // Self-documenting: "9.3% ctx used" clarifies what the percentage means
+            const pctStr = `${displayPercentage.toFixed(1)}%`;
+            // rawValue: just percentage (label like "Ctx Used:" provides context)
+            // full: self-documenting with suffix for standalone use
             const suffix = isInverse ? 'ctx free' : 'ctx used';
-            return item.rawValue ? `${displayPercentage.toFixed(1)}% ${suffix}` : `📊 ${displayPercentage.toFixed(1)}% ${suffix}`;
+            return item.rawValue ? pctStr : `📊 ${pctStr} ${suffix}`;
         }
         // Return placeholder when no data available (better than empty)
         return item.rawValue ? '—' : '📊 —';

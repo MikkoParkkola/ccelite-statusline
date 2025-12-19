@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
+import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { runTUI } from './tui';
 import type {
@@ -54,7 +57,150 @@ async function readStdin(): Promise<string | null> {
     }
 }
 
+// Auto-refresh stale caches (workaround for PostToolUse hooks not triggering)
+// Uses file-based throttling to prevent concurrent refreshes
+let lastRefreshAttempt = 0;
+const REFRESH_THROTTLE_MS = 10000; // 10 seconds between refresh attempts
+const MAX_CACHE_AGE_SECONDS = 300; // 5 minutes max staleness
+
+function refreshStaleCaches(): void {
+    // Throttle: prevent multiple refresh attempts in quick succession
+    const now = Date.now();
+    if (now - lastRefreshAttempt < REFRESH_THROTTLE_MS) {
+        return;
+    }
+    lastRefreshAttempt = now;
+
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    if (!homeDir) return;
+
+    const hooksLibDir = path.join(homeDir, '.claude', 'hooks', 'lib');
+    const cacheFile = path.join(hooksLibDir, '.statusline_cache.json');
+    const lockFile = path.join(hooksLibDir, '.statusline_refresh.lock');
+    const updaterScript = path.join(hooksLibDir, 'statusline_cache_updater.py');
+
+    try {
+        // Check if cache exists
+        if (!fs.existsSync(cacheFile)) return;
+
+        // Check lock file - if another refresh is in progress (lock < 60s old), skip
+        if (fs.existsSync(lockFile)) {
+            const lockAge = (Date.now() - fs.statSync(lockFile).mtimeMs) / 1000;
+            if (lockAge < 60) return; // Another refresh in progress
+            // Lock is stale, remove it
+            try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
+        }
+
+        // Parse cache and check age
+        let cacheData: { updated_at?: string };
+        try {
+            cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+        } catch {
+            return; // Corrupted cache, skip refresh (will be rebuilt eventually)
+        }
+
+        if (!cacheData.updated_at) return;
+
+        // Safe date parsing with fallback
+        let updatedAt: Date;
+        try {
+            updatedAt = new Date(cacheData.updated_at);
+            if (isNaN(updatedAt.getTime())) return; // Invalid date
+        } catch {
+            return;
+        }
+
+        const ageSeconds = (Date.now() - updatedAt.getTime()) / 1000;
+
+        // Only refresh if stale and updater script exists
+        if (ageSeconds > MAX_CACHE_AGE_SECONDS && fs.existsSync(updaterScript)) {
+            // Create lock file BEFORE spawning
+            try {
+                fs.writeFileSync(lockFile, String(process.pid));
+            } catch {
+                return; // Can't create lock, skip refresh
+            }
+
+            // Find python3 - prefer pyenv/user version over system (for modern syntax support)
+            const pythonPaths = [
+                path.join(homeDir, '.pyenv', 'shims', 'python3'),
+                '/usr/local/bin/python3',
+                '/opt/homebrew/bin/python3',
+                'python3'  // fallback to PATH
+            ];
+            let pythonCmd = 'python3';
+            for (const p of pythonPaths) {
+                if (p === 'python3' || fs.existsSync(p)) {
+                    pythonCmd = p;
+                    break;
+                }
+            }
+
+            // Spawn background refresh (non-blocking, fully detached)
+            // Pass full process.env to support pyenv and other python version managers
+            const child = spawn(pythonCmd, [updaterScript], {
+                detached: true,
+                stdio: 'ignore',
+                env: process.env
+            });
+
+            child.unref();
+
+            // Clean up lock after spawn completes (in background)
+            child.on('exit', () => {
+                try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
+            });
+
+            // Also set a timeout to clean up lock if child doesn't exit cleanly
+            // Use .unref() so the timer doesn't keep the process alive
+            const lockCleanupTimer = setTimeout(() => {
+                try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
+            }, 30000);
+            lockCleanupTimer.unref();
+
+            // Also refresh feed data (insights, patterns) if updater exists
+            const feedUpdater = path.join(homeDir, '.claude', 'hooks', 'PostToolUse', 'feed-updater.py');
+            if (fs.existsSync(feedUpdater)) {
+                const feedChild = spawn(pythonCmd, [feedUpdater], {
+                    detached: true,
+                    stdio: 'ignore',
+                    env: process.env
+                });
+                feedChild.unref();
+            }
+
+            // Refresh elite metrics (streak display, hooks health)
+            const eliteProvider = path.join(hooksLibDir, 'elite_metrics_provider.py');
+            if (fs.existsSync(eliteProvider)) {
+                const eliteChild = spawn(pythonCmd, [eliteProvider, '--json'], {
+                    detached: true,
+                    stdio: 'ignore',
+                    env: process.env
+                });
+                eliteChild.unref();
+            }
+
+            // Maintain streak data (reset daily/weekly counters, update timestamp)
+            const streakMaintenance = path.join(hooksLibDir, 'streak_maintenance.py');
+            if (fs.existsSync(streakMaintenance)) {
+                const streakChild = spawn(pythonCmd, [streakMaintenance], {
+                    detached: true,
+                    stdio: 'ignore',
+                    env: process.env
+                });
+                streakChild.unref();
+            }
+        }
+    } catch {
+        // Best-effort: silently ignore all errors
+        // The statusline must render even if cache refresh fails
+    }
+}
+
 async function renderMultipleLines(data: StatusJSON) {
+    // Auto-refresh stale caches before rendering
+    refreshStaleCaches();
+
     const settings = await loadSettings();
 
     // Set global chalk level based on settings
@@ -67,7 +213,7 @@ async function renderMultipleLines(data: StatusJSON) {
     const lines = settings.lines;
 
     // Get token metrics if needed (check all lines)
-    const hasTokenItems = lines.some(line => line.some(item => ['tokens-input', 'tokens-output', 'tokens-cached', 'tokens-total', 'context-length', 'context-percentage', 'context-percentage-usable'].includes(item.type)));
+    const hasTokenItems = lines.some(line => line.some(item => ['tokens-input', 'tokens-output', 'tokens-cached', 'tokens-total', 'token-rate', 'context-length', 'context-percentage', 'context-percentage-usable'].includes(item.type)));
 
     // Check if session clock is needed
     const hasSessionClock = lines.some(line => line.some(item => item.type === 'session-clock'));
