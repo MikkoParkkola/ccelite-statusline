@@ -17,9 +17,10 @@ export class TokensTotalWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '30.6k' : 'Total: 30.6k';
+            return item.rawValue ? '30.6K tok' : 'Total: 30.6K tok';
         } else if (context.tokenMetrics) {
-            return item.rawValue ? formatTokens(context.tokenMetrics.totalTokens) : `Total: ${formatTokens(context.tokenMetrics.totalTokens)}`;
+            const tokens = formatTokens(context.tokenMetrics.totalTokens);
+            return item.rawValue ? `${tokens} tok` : `Total: ${tokens} tok`;
         }
         return item.rawValue ? '—' : 'Total: —';
     }

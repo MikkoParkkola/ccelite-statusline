@@ -283,12 +283,12 @@ export class DiskUsagePercentWidget implements Widget {
 }
 
 /**
- * Tests Percentage Widget - Shows test coverage
- * Example output: "95%" or "✓ 95%"
+ * Tests Percentage Widget - Shows test coverage AND pass rate
+ * Example output: "95% (98/100)" or "✓ 95% (98/100)"
  */
 export class TestsPercentageWidget implements Widget {
     getDefaultColor(): string { return 'green'; }
-    getDescription(): string { return 'Shows test coverage percentage'; }
+    getDescription(): string { return 'Shows test coverage percentage and pass rate'; }
     getDisplayName(): string { return 'Tests %'; }
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
         return { displayText: this.getDisplayName() };
@@ -296,16 +296,27 @@ export class TestsPercentageWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '95%' : '✓ 95%';
+            return item.rawValue ? '95% (98/100)' : '✅ 95% (98/100)';
         }
 
         const metrics = getQualityMetrics();
         let percentage: number | null = null;
+        let passRate: string | null = null;
 
+        // Get coverage percentage
         if (metrics?.tests_percentage !== undefined) {
             percentage = metrics.tests_percentage;
-        } else if (metrics?.tests_passed !== undefined && metrics?.tests_total !== undefined && metrics.tests_total > 0) {
-            percentage = (metrics.tests_passed / metrics.tests_total) * 100;
+        }
+
+        // Get pass rate (passed/total)
+        if (metrics?.tests_passed !== undefined && metrics?.tests_total !== undefined) {
+            if (metrics.tests_total > 0) {
+                passRate = `${metrics.tests_passed}/${metrics.tests_total}`;
+                // Calculate percentage from pass rate if not provided
+                if (percentage === null) {
+                    percentage = (metrics.tests_passed / metrics.tests_total) * 100;
+                }
+            }
         }
 
         // Semantic warning indicators for coverage (low = bad)
@@ -317,7 +328,16 @@ export class TestsPercentageWidget implements Widget {
         };
 
         const warning = percentage !== null ? getWarningIndicator(percentage) : '';
-        const formatted = percentage !== null ? `${Math.round(percentage)}%${warning}` : null;
+
+        // Build formatted string: coverage% + optional (passed/total)
+        let formatted: string | null = null;
+        if (percentage !== null) {
+            formatted = `${Math.round(percentage)}%`;
+            if (passRate !== null) {
+                formatted += ` (${passRate})`;
+            }
+            formatted += warning;
+        }
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
