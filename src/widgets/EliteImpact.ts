@@ -109,7 +109,12 @@ function formatCost(cost: number): string {
     if (cost >= 1000) {
         return `$${(cost / 1000).toFixed(1)}K`;
     } else if (cost >= 1) {
-        return `$${cost.toFixed(2)}`;
+        // Smart decimals: only show .XX if there are cents
+        const rounded = Math.round(cost * 100) / 100;
+        if (rounded === Math.floor(rounded)) {
+            return `$${Math.floor(rounded)}`;  // Whole dollars: $35
+        }
+        return `$${rounded.toFixed(2)}`;  // Has cents: $35.50
     } else if (cost >= 0.01) {
         return `$${cost.toFixed(2)}`;
     } else {
@@ -179,29 +184,38 @@ export class EliteImpactCostWidget implements Widget {
 }
 
 /**
- * Total Elite Value (cost + time + quality)
- * Label: "Value $X.XX" - Total value delivered by elite framework
+ * Total Elite Value (cost + time + quality) with breakdown
+ * Example: "$1.4K (C:$35 T:$520 Q:$800)" showing cost/time/quality components
  */
 export class EliteTotalValueWidget implements Widget {
     getDefaultColor(): string { return 'brightGreen'; }
-    getDescription(): string { return 'Total elite value (cost savings + time value + quality value)'; }
+    getDescription(): string { return 'Total elite value with breakdown: C=Cost saved, T=Time value, Q=Quality value'; }
     getDisplayName(): string { return 'Elite Total Value'; }
     getEditorDisplay(item: WidgetItem): WidgetEditorDisplay {
-        return { displayText: 'Value $200.05' };
+        return { displayText: '$1.4K (C:$35 T:$520 Q:$800)' };
     }
 
     render(item: WidgetItem, context: RenderContext, settings: Settings): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '$200.05' : 'Value $200.05';
+            return item.rawValue ? '$1.4K (C:$35 T:$520 Q:$800)' : 'Value $1.4K';
         }
 
         const metrics = getEliteMetrics();
         const totalValue = metrics?.totals?.total_elite_value_usd ?? 0;
+        const costValue = metrics?.totals?.cost_saved_usd ?? 0;
+        const timeValue = metrics?.totals?.time_value_usd ?? 0;
+        const qualityValue = metrics?.totals?.quality_value_usd ?? 0;
 
-        // rawValue mode: ALWAYS return a value (never null)
+        // rawValue mode: Show breakdown
         if (item.rawValue) {
             if (totalValue <= 0) return '—';
-            return formatCost(totalValue);
+            const total = formatCost(totalValue);
+            // Compact breakdown: C=Cost, T=Time, Q=Quality
+            const c = costValue > 0 ? `C:${formatCost(costValue).replace('$', '$')}` : '';
+            const t = timeValue > 0 ? `T:${formatCost(timeValue).replace('$', '$')}` : '';
+            const q = qualityValue > 0 ? `Q:${formatCost(qualityValue).replace('$', '$')}` : '';
+            const breakdown = [c, t, q].filter(x => x).join(' ');
+            return breakdown ? `${total} (${breakdown})` : total;
         }
 
         // Full mode: can return null
