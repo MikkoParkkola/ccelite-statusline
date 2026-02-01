@@ -91,24 +91,44 @@ interface CacheMetrics {
 
 function getCacheMetrics(): CacheMetrics | null {
     try {
-        // Try cache_metrics.jsonl
-        const metricsFile = path.join(os.homedir(), '.claude', 'data', 'meta_learning', 'cache_metrics.jsonl');
-        if (fs.existsSync(metricsFile)) {
-            const content = fs.readFileSync(metricsFile, 'utf-8');
-            const lines = content.trim().split('\n').filter(l => l.trim());
-            if (lines.length === 0) return null;
-
-            // Parse last line for latest metrics
-            const lastLine = lines[lines.length - 1];
-            if (!lastLine) return null;
-            return JSON.parse(lastLine) as CacheMetrics;
+        // Priority 1: Read from elite_telemetry_cache.json (current live data)
+        const eliteFile = path.join(os.homedir(), '.claude', 'data', 'elite_telemetry_cache.json');
+        if (fs.existsSync(eliteFile)) {
+            const content = fs.readFileSync(eliteFile, 'utf-8');
+            const data = JSON.parse(content);
+            if (data.cache_metrics) {
+                return data.cache_metrics as CacheMetrics;
+            }
         }
 
-        // Try alternative location
-        const altFile = path.join(os.homedir(), '.claude', 'data', 'cache_stats.json');
-        if (fs.existsSync(altFile)) {
-            const content = fs.readFileSync(altFile, 'utf-8');
-            return JSON.parse(content) as CacheMetrics;
+        // Priority 2: Read from realtime_metrics.json
+        const realtimeFile = path.join(os.homedir(), '.claude', 'data', 'quality', 'realtime_metrics.json');
+        if (fs.existsSync(realtimeFile)) {
+            const content = fs.readFileSync(realtimeFile, 'utf-8');
+            const data = JSON.parse(content);
+            if (data.daemon_cache) {
+                // Map daemon_cache structure to CacheMetrics
+                return {
+                    hit_rate: data.daemon_cache.hit_rate,
+                    cache_hits: data.daemon_cache.hits,
+                    total_requests: data.daemon_cache.hits + data.daemon_cache.misses
+                };
+            }
+        }
+
+        // Priority 3: Historical data from metrics/cache_stats.json (last entry)
+        const histFile = path.join(os.homedir(), '.claude', 'data', 'metrics', 'cache_stats.json');
+        if (fs.existsSync(histFile)) {
+            const content = fs.readFileSync(histFile, 'utf-8');
+            const data = JSON.parse(content);
+            if (Array.isArray(data) && data.length > 0) {
+                const latest = data[data.length - 1];
+                return {
+                    hit_rate: latest.hit_rate * 100,  // Convert 0-1 to 0-100
+                    cache_hits: latest.hits,
+                    total_requests: latest.hits + latest.misses
+                };
+            }
         }
 
         return null;

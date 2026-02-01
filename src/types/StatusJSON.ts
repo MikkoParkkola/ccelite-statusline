@@ -21,6 +21,18 @@ export const StatusJSONSchema = z.looseObject({
         total_api_duration_ms: z.number().optional(),
         total_lines_added: z.number().optional(),
         total_lines_removed: z.number().optional()
+    }).optional(),
+    // Added in v2.1.6 (2026-01-13)
+    context_window: z.object({
+        used_percentage: z.number().optional(),
+        remaining_percentage: z.number().optional()
+    }).optional(),
+    // Quota/usage fields (check if provided by Claude Code)
+    usage: z.object({
+        five_hour_utilization: z.number().optional(),
+        seven_day_utilization: z.number().optional(),
+        five_hour_resets_at: z.string().optional(),
+        seven_day_resets_at: z.string().optional()
     }).optional()
 });
 
