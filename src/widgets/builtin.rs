@@ -10,11 +10,19 @@ pub fn render_model(input: &StatusInput) -> Option<String> {
     // Try display_name first, then id
     let name = model.display_name.as_ref().or(model.id.as_ref())?;
 
-    // Shorten common model names
+    // Shorten common model names — extract version from ID
     let short = if name.contains("opus") {
-        "Opus 4.5"
+        if name.contains("4-5") || name.contains("4.5") {
+            "Opus 4.5"
+        } else {
+            "Opus 4.6"
+        }
     } else if name.contains("sonnet") {
-        "Sonnet 4.5"
+        if name.contains("4-5") || name.contains("4.5") {
+            "Sonnet 4.5"
+        } else {
+            "Sonnet 4.6"
+        }
     } else if name.contains("haiku") {
         "Haiku"
     } else {

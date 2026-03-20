@@ -199,8 +199,11 @@ fn parse_feed_items(json: &serde_json::Value) -> Option<FeedData> {
 }
 
 /// Parse one JSON object into a `FeedEntry`, returning `None` for blank text
-/// or items whose effective timestamp is older than `cutoff`.
-fn parse_single_item(v: &serde_json::Value, cutoff: DateTime<Utc>) -> Option<FeedEntry> {
+/// or items whose effective timestamp is older than their applicable TTL.
+///
+/// The `_global_cutoff` parameter (derived from `MAX_ITEM_AGE_SECS`) is the
+/// floor: a per-item `ttl_seconds` field may impose a shorter deadline.
+fn parse_single_item(v: &serde_json::Value, _global_cutoff: DateTime<Utc>) -> Option<FeedEntry> {
     let text = v.get("text").and_then(|t| t.as_str()).unwrap_or("").to_string();
     if text.is_empty() {
         return None;
@@ -211,7 +214,15 @@ fn parse_single_item(v: &serde_json::Value, cutoff: DateTime<Utc>) -> Option<Fee
 
     // Use the most recent of the two times to judge staleness.
     let effective_time = shown_at.or(timestamp)?;
-    if effective_time < cutoff {
+
+    // Per-item TTL override: health alerts can set a short TTL (e.g. 300s = 5 min)
+    // to ensure they disappear quickly once the service recovers.
+    let max_age = v
+        .get("ttl_seconds")
+        .and_then(|t| t.as_i64())
+        .unwrap_or(MAX_ITEM_AGE_SECS);
+    let item_cutoff = Utc::now() - chrono::Duration::seconds(max_age);
+    if effective_time < item_cutoff {
         return None;
     }
 
@@ -481,6 +492,28 @@ mod tests {
         let entry = parse_single_item(&v, cutoff).unwrap();
         // THEN: explicit priority wins
         assert_eq!(entry.priority, 99);
+    }
+
+    #[test]
+    fn parse_single_item_respects_per_item_ttl() {
+        // GIVEN: a health alert 10 minutes old (600s) with ttl_seconds=300
+        // — it is within the global 24h window but beyond its own 5-min TTL.
+        let ts = Utc::now() - Duration::seconds(600);
+        let v = serde_json::json!({
+            "text": "CRITICAL: SurrealDB unreachable!",
+            "timestamp": ts.to_rfc3339(),
+            "shown_at": ts.to_rfc3339(),
+            "icon": "🔴",
+            "urgency": 10,
+            "importance": 10,
+            "source": "system_health",
+            "ttl_seconds": 300
+        });
+        let cutoff = Utc::now() - Duration::seconds(MAX_ITEM_AGE_SECS);
+        // WHEN: parsed with the global 24h cutoff
+        let result = parse_single_item(&v, cutoff);
+        // THEN: filtered out because 600s > per-item ttl_seconds=300
+        assert!(result.is_none());
     }
 
     // ── parse_feed_items ───────────────────────────────────────────────
