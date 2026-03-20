@@ -27,12 +27,16 @@ export const StatusJSONSchema = z.looseObject({
         used_percentage: z.number().optional(),
         remaining_percentage: z.number().optional()
     }).optional(),
-    // Quota/usage fields (check if provided by Claude Code)
-    usage: z.object({
-        five_hour_utilization: z.number().optional(),
-        seven_day_utilization: z.number().optional(),
-        five_hour_resets_at: z.string().optional(),
-        seven_day_resets_at: z.string().optional()
+    // Added in CC 2.1.80 — live rate limit data from stdin
+    rate_limits: z.object({
+        five_hour: z.object({
+            used_percentage: z.number(),
+            resets_at: z.string()
+        }).optional(),
+        seven_day: z.object({
+            used_percentage: z.number(),
+            resets_at: z.string()
+        }).optional()
     }).optional()
 });
 

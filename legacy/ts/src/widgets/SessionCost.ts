@@ -10,9 +10,7 @@ import type {
     WidgetItem
 } from '../types/Widget';
 
-interface SessionROI {
-    cost?: number;
-}
+interface SessionROI { cost?: number }
 
 function getSessionCost(): number | null {
     try {

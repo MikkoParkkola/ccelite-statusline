@@ -61,12 +61,16 @@ export class ContextPercentageUsableWidget implements Widget {
 
             if (isInverse) {
                 // Safe mode: low % = bad (running out of space)
-                if (displayPercentage < 10) indicator = '🔴';
-                else if (displayPercentage < 20) indicator = '⚠️';
+                if (displayPercentage < 10)
+                    indicator = '🔴';
+                else if (displayPercentage < 20)
+                    indicator = '⚠️';
             } else {
                 // To limit mode: high % = bad (approaching limit)
-                if (displayPercentage > 90) indicator = '🔴';
-                else if (displayPercentage > 75) indicator = '⚠️';
+                if (displayPercentage > 90)
+                    indicator = '🔴';
+                else if (displayPercentage > 75)
+                    indicator = '⚠️';
             }
 
             return item.rawValue ? `${roundedPct}%${indicator}` : `📊 ${roundedPct}%${indicator}`;

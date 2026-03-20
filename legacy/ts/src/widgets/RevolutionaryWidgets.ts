@@ -74,7 +74,7 @@ class DataCache {
         return entry.data;
     }
 
-    set<T>(key: string, data: T, ttl: number = 5000): void {
+    set<T>(key: string, data: T, ttl = 5000): void {
         // Prevent memory leak: evict oldest if at max size
         if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
             const firstKey = this.cache.keys().next().value;
@@ -115,16 +115,18 @@ const cache = DataCache.getInstance();
 // FILE READER UTILITY - Centralized, cached file reading
 // ============================================================================
 
-function readCachedFile(filePath: string, ttl: number = 5000): string | null {
+function readCachedFile(filePath: string, ttl = 5000): string | null {
     const cacheKey = `file:${filePath}`;
 
     // Try cache first
     const cached = cache.get<string>(cacheKey);
-    if (cached !== null) return cached;
+    if (cached !== null)
+        return cached;
 
     // Read from disk
     try {
-        if (!fs.existsSync(filePath)) return null;
+        if (!fs.existsSync(filePath))
+            return null;
         const content = fs.readFileSync(filePath, 'utf-8');
         cache.set(cacheKey, content, ttl);
         return content;
@@ -133,17 +135,19 @@ function readCachedFile(filePath: string, ttl: number = 5000): string | null {
     }
 }
 
-function readCachedJSON<T>(filePath: string, defaultValue: T, ttl: number = 5000): T {
+function readCachedJSON<T>(filePath: string, defaultValue: T, ttl = 5000): T {
     const cacheKey = `json:${filePath}`;
 
     // Try cache first
     const cached = cache.get<T>(cacheKey);
-    if (cached !== null) return cached;
+    if (cached !== null)
+        return cached;
 
     // Read and parse from disk
     try {
         const content = readCachedFile(filePath, ttl);
-        if (!content) return defaultValue;
+        if (!content)
+            return defaultValue;
 
         const parsed = JSON.parse(content) as T;
         cache.set(cacheKey, parsed, ttl);
@@ -153,17 +157,19 @@ function readCachedJSON<T>(filePath: string, defaultValue: T, ttl: number = 5000
     }
 }
 
-function readCachedJSONL<T>(filePath: string, ttl: number = 5000): T[] {
+function readCachedJSONL<T>(filePath: string, ttl = 5000): T[] {
     const cacheKey = `jsonl:${filePath}`;
 
     // Try cache first
     const cached = cache.get<T[]>(cacheKey);
-    if (cached !== null) return cached;
+    if (cached !== null)
+        return cached;
 
     // Read and parse from disk
     try {
         const content = readCachedFile(filePath, ttl);
-        if (!content) return [];
+        if (!content)
+            return [];
 
         const lines = content.trim().split('\n').filter(l => l.trim());
         const results: T[] = [];
@@ -209,7 +215,7 @@ const PATHS = {
     claudeDir: CLAUDE_HOME,
     // Elite feature tracking
     cacheStats: path.join(DATA_DIR, 'cache_stats.json'),
-    circuitDir: DATA_DIR,  // Circuit breaker files are circuit_*.json in DATA_DIR
+    circuitDir: DATA_DIR  // Circuit breaker files are circuit_*.json in DATA_DIR
 } as const;
 
 // ============================================================================
@@ -219,46 +225,50 @@ const PATHS = {
 const SPARK_CHARS = '▁▂▃▄▅▆▇█';
 const BRAILLE_CHARS = '⠀⣀⣤⣴⣶⣾⣿';
 
-function sparkline(values: number[], width: number = 7): string {
-    if (values.length === 0) return '▁'.repeat(width);
+function sparkline(values: number[], width = 7): string {
+    if (values.length === 0)
+        return '▁'.repeat(width);
     const max = Math.max(...values, 1);
     const min = Math.min(...values, 0);
     const range = max - min || 1;
 
     const data = values.slice(-width);
-    while (data.length < width) data.unshift(min);
+    while (data.length < width)
+        data.unshift(min);
 
-    return data.map(v => {
+    return data.map((v) => {
         const normalized = (v - min) / range;
         const index = Math.min(Math.floor(normalized * 8), 7);
         return SPARK_CHARS[index];
     }).join('');
 }
 
-function brailleSparkline(values: number[], width: number = 7): string {
-    if (values.length === 0) return '⠀'.repeat(width);
+function brailleSparkline(values: number[], width = 7): string {
+    if (values.length === 0)
+        return '⠀'.repeat(width);
     const max = Math.max(...values, 1);
     const min = Math.min(...values, 0);
     const range = max - min || 1;
 
     const data = values.slice(-width);
-    while (data.length < width) data.unshift(min);
+    while (data.length < width)
+        data.unshift(min);
 
-    return data.map(v => {
+    return data.map((v) => {
         const normalized = (v - min) / range;
         const index = Math.min(Math.floor(normalized * 7), 6);
         return BRAILLE_CHARS[index];
     }).join('');
 }
 
-function progressBar(percent: number, width: number = 10): string {
+function progressBar(percent: number, width = 10): string {
     const clamped = Math.max(0, Math.min(100, percent));
     const filled = Math.round((clamped / 100) * width);
     return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
 // Gradient progress bar: ░▒▓█ for visual depth
-function gradientBar(percent: number, width: number = 10): string {
+function gradientBar(percent: number, width = 10): string {
     const clamped = Math.max(0, Math.min(100, percent));
     const position = (clamped / 100) * width;
     const filled = Math.floor(position);
@@ -267,10 +277,14 @@ function gradientBar(percent: number, width: number = 10): string {
     let result = '█'.repeat(filled);
     if (filled < width) {
         // Add gradient transition
-        if (partial > 0.75) result += '▓';
-        else if (partial > 0.5) result += '▒';
-        else if (partial > 0.25) result += '░';
-        else result += '░';
+        if (partial > 0.75)
+            result += '▓';
+        else if (partial > 0.5)
+            result += '▒';
+        else if (partial > 0.25)
+            result += '░';
+        else
+            result += '░';
         result += '░'.repeat(width - filled - 1);
     }
     return result.slice(0, width);
@@ -320,15 +334,15 @@ function contextProgressBar(options: ContextProgressBarOptions): string {
     // Generate bar based on mode
     let bar: string;
     switch (mode) {
-        case 'braille':
-            bar = brailleProgressBar(clamped, width);
-            break;
-        case 'tty':
-            bar = ttyProgressBar(clamped, width);
-            break;
-        case 'block':
-        default:
-            bar = gradientBar(clamped, width);
+    case 'braille':
+        bar = brailleProgressBar(clamped, width);
+        break;
+    case 'tty':
+        bar = ttyProgressBar(clamped, width);
+        break;
+    case 'block':
+    default:
+        bar = gradientBar(clamped, width);
     }
 
     // Semantic coloring
@@ -393,13 +407,13 @@ function ttyProgressBar(percent: number, width: number): string {
  */
 function graphBar(percent: number, width: number, mode: GraphMode = 'block'): string {
     switch (mode) {
-        case 'braille':
-            return brailleProgressBar(percent, width);
-        case 'tty':
-            return ttyProgressBar(percent, width);
-        case 'block':
-        default:
-            return gradientBar(percent, width);
+    case 'braille':
+        return brailleProgressBar(percent, width);
+    case 'tty':
+        return ttyProgressBar(percent, width);
+    case 'block':
+    default:
+        return gradientBar(percent, width);
     }
 }
 
@@ -456,15 +470,15 @@ const ANSI = {
  */
 function ansiEmphasis(text: string, level: 'critical' | 'warning' | 'normal' | 'dim'): string {
     switch (level) {
-        case 'critical':
-            return `${ANSI.BLINK}${ANSI.BOLD}${text}${ANSI.RESET}`;
-        case 'warning':
-            return `${ANSI.BOLD}${text}${ANSI.RESET}`;
-        case 'dim':
-            return `${ANSI.DIM}${text}${ANSI.RESET}`;
-        case 'normal':
-        default:
-            return text;
+    case 'critical':
+        return `${ANSI.BLINK}${ANSI.BOLD}${text}${ANSI.RESET}`;
+    case 'warning':
+        return `${ANSI.BOLD}${text}${ANSI.RESET}`;
+    case 'dim':
+        return `${ANSI.DIM}${text}${ANSI.RESET}`;
+    case 'normal':
+    default:
+        return text;
     }
 }
 
@@ -481,15 +495,21 @@ function getSemanticColor(percent: number, semantic: ProgressSemantic = 'fill'):
 
     if (semantic === 'fill') {
         // fill = bad when high (quota usage, context usage, etc.)
-        if (clamped >= 95) return '🔴';
-        if (clamped >= 80) return '🟠';
-        if (clamped >= 60) return '🟡';
+        if (clamped >= 95)
+            return '🔴';
+        if (clamped >= 80)
+            return '🟠';
+        if (clamped >= 60)
+            return '🟡';
         return '🟢';
     } else {
         // drain = bad when low (remaining capacity, time left, etc.)
-        if (clamped <= 10) return '🔴';
-        if (clamped <= 25) return '🟠';
-        if (clamped <= 40) return '🟡';
+        if (clamped <= 10)
+            return '🔴';
+        if (clamped <= 25)
+            return '🟠';
+        if (clamped <= 40)
+            return '🟡';
         return '🟢';
     }
 }
@@ -501,14 +521,20 @@ function getStatusIcon(percent: number, semantic: ProgressSemantic = 'fill'): st
     const clamped = Math.max(0, Math.min(100, percent));
 
     if (semantic === 'fill') {
-        if (clamped >= 95) return '🔥';   // Critical
-        if (clamped >= 80) return '⚠️';   // Warning
-        if (clamped >= 60) return '📊';   // Attention
+        if (clamped >= 95)
+            return '🔥';   // Critical
+        if (clamped >= 80)
+            return '⚠️';   // Warning
+        if (clamped >= 60)
+            return '📊';   // Attention
         return '✨';                       // Good
     } else {
-        if (clamped <= 10) return '💀';   // Critical
-        if (clamped <= 25) return '⚡';   // Warning
-        if (clamped <= 40) return '📉';   // Attention
+        if (clamped <= 10)
+            return '💀';   // Critical
+        if (clamped <= 25)
+            return '⚡';   // Warning
+        if (clamped <= 40)
+            return '📉';   // Attention
         return '🟢';                       // Good
     }
 }
@@ -528,11 +554,12 @@ interface MiniBarValue {
  * Example output: "CPU:▂ Mem:▅ Disk:▃"
  */
 function miniBarChart(values: MiniBarValue[]): string {
-    if (values.length === 0) return '';
+    if (values.length === 0)
+        return '';
 
     const globalMax = Math.max(...values.map(v => v.max || v.value), 1);
 
-    return values.map(v => {
+    return values.map((v) => {
         const max = v.max || globalMax;
         const normalized = v.value / max;
         const height = Math.min(Math.floor(normalized * 8), 7);
@@ -542,7 +569,8 @@ function miniBarChart(values: MiniBarValue[]): string {
 
 // Trend detection: calculate direction and magnitude from values
 function detectTrend(values: number[]): { direction: '▲' | '▼' | '→'; magnitude: number; confidence: number } {
-    if (values.length < 2) return { direction: '→', magnitude: 0, confidence: 0 };
+    if (values.length < 2)
+        return { direction: '→', magnitude: 0, confidence: 0 };
 
     const recent = values.slice(-3);
     const older = values.slice(-6, -3);
@@ -575,8 +603,9 @@ function detectTrend(values: number[]): { direction: '▲' | '▼' | '→'; magn
 }
 
 // Mini histogram using box drawing characters
-function miniHistogram(values: number[], width: number = 5): string {
-    if (values.length === 0) return '▁'.repeat(width);
+function miniHistogram(values: number[], width = 5): string {
+    if (values.length === 0)
+        return '▁'.repeat(width);
 
     const max = Math.max(...values, 1);
     const buckets: number[] = new Array(width).fill(0);
@@ -590,7 +619,7 @@ function miniHistogram(values: number[], width: number = 5): string {
     }
 
     const maxCount = Math.max(...buckets, 1);
-    return buckets.map(count => {
+    return buckets.map((count) => {
         const normalized = count / maxCount;
         const index = Math.min(Math.floor(normalized * 8), 7);
         return SPARK_CHARS[index];
@@ -629,10 +658,12 @@ const DEFAULT_ROI: ROIData = {
 function getROIData(): ROIData {
     const cacheKey = 'computed:roi';
     const cached = cache.get<ROIData>(cacheKey);
-    if (cached) return cached;
+    if (cached)
+        return cached;
 
     const entries = readCachedJSONL<ROIEntry>(PATHS.roi);
-    if (entries.length === 0) return DEFAULT_ROI;
+    if (entries.length === 0)
+        return DEFAULT_ROI;
 
     let totalValue = 0;
     let totalRoi = 0;
@@ -712,7 +743,8 @@ const DEFAULT_SELF_IMPROVEMENT: SelfImprovementData = {
 function getSelfImprovement(): SelfImprovementData {
     const cacheKey = 'computed:self_improvement';
     const cached = cache.get<SelfImprovementData>(cacheKey);
-    if (cached) return cached;
+    if (cached)
+        return cached;
 
     const data = readCachedJSON<SelfImprovementMetrics>(PATHS.selfImprovement, {});
 
@@ -728,20 +760,20 @@ function getSelfImprovement(): SelfImprovementData {
     return result;
 }
 
-interface HistoryEntry {
-    project?: string;
-}
+interface HistoryEntry { project?: string }
 
 function getHistoryStats(): { sessions: number; projects: number } {
     const cacheKey = 'computed:history';
     const cached = cache.get<{ sessions: number; projects: number }>(cacheKey);
-    if (cached) return cached;
+    if (cached)
+        return cached;
 
     const entries = readCachedJSONL<HistoryEntry>(PATHS.history);
     const projects = new Set<string>();
 
     for (const entry of entries) {
-        if (entry.project) projects.add(entry.project);
+        if (entry.project)
+            projects.add(entry.project);
     }
 
     const result = { sessions: entries.length, projects: projects.size };
@@ -749,9 +781,7 @@ function getHistoryStats(): { sessions: number; projects: number } {
     return result;
 }
 
-interface ErrorEntry {
-    recovery_matched?: boolean;
-}
+interface ErrorEntry { recovery_matched?: boolean }
 
 function getErrorRecoveryCount(): number {
     const entries = readCachedJSONL<ErrorEntry>(PATHS.errors);
@@ -761,10 +791,12 @@ function getErrorRecoveryCount(): number {
 function getTelemetryCount(): number {
     const cacheKey = 'computed:telemetry_count';
     const cached = cache.get<number>(cacheKey);
-    if (cached !== null) return cached;
+    if (cached !== null)
+        return cached;
 
     try {
-        if (!fs.existsSync(PATHS.telemetry)) return 0;
+        if (!fs.existsSync(PATHS.telemetry))
+            return 0;
         const count = fs.readdirSync(PATHS.telemetry).filter(f => f.endsWith('.json')).length;
         cache.set(cacheKey, count, 30000); // 30s TTL for directory listing
         return count;
@@ -778,14 +810,18 @@ function getTelemetryCount(): number {
 // ============================================================================
 
 function formatMoney(value: number): string {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`;
+    if (value >= 1000000)
+        return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000)
+        return `$${(value / 1000).toFixed(1)}K`;
     return `$${value.toFixed(0)}`;
 }
 
 function formatNumber(value: number): string {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    if (value >= 1000000)
+        return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000)
+        return `${(value / 1000).toFixed(1)}K`;
     return value.toFixed(0);
 }
 
@@ -861,8 +897,8 @@ export class TimeDilationWidget implements Widget {
         const roi = getROIData();
         const improvement = getSelfImprovement();
         const hoursSaved = roi.latest_value / 100;
-        const multiplier = improvement.task_success_rate > 0 ?
-            (1 / (1 - improvement.task_success_rate + 0.01)) : 1;
+        const multiplier = improvement.task_success_rate > 0
+            ? (1 / (1 - improvement.task_success_rate + 0.01)) : 1;
 
         const spark = sparkline(roi.history.slice(-7), 7);
         const timeSaved = formatTime(hoursSaved * 60);
@@ -920,7 +956,7 @@ export class CompetitiveMultiplierWidget implements Widget {
 
     render(item: WidgetItem, context: RenderContext): string | null {
         if (context.isPreview) {
-            return item.rawValue ? '47×' : "🏆 You're 47× Faster Than Average Dev │ Rank: Top 0.01%";
+            return item.rawValue ? '47×' : '🏆 You\'re 47× Faster Than Average Dev │ Rank: Top 0.01%';
         }
 
         const roi = getROIData();
@@ -1124,8 +1160,8 @@ export class SessionFortuneWidget implements Widget {
         const improvement = getSelfImprovement();
         const successProbability = improvement.task_success_rate * 100;
         const stars = starRating(successProbability);
-        const trend = successProbability > 80 ? '▲ trending up' :
-                      successProbability > 50 ? '→ steady' : '▼ needs focus';
+        const trend = successProbability > 80 ? '▲ trending up'
+            : successProbability > 50 ? '→ steady' : '▼ needs focus';
 
         return item.rawValue
             ? stars
@@ -1408,13 +1444,9 @@ export class ContextMasteryWidget implements Widget {
 // WIDGET #19: MOONSHOT PROGRESS 🚀
 // ============================================================================
 
-interface MoonshotValidation {
-    verdict?: string;
-}
+interface MoonshotValidation { verdict?: string }
 
-interface MoonshotData {
-    results?: Record<string, MoonshotValidation>;
-}
+interface MoonshotData { results?: Record<string, MoonshotValidation> }
 
 export class MoonshotProgressWidget implements Widget {
     getDefaultColor(): string { return 'brightRed'; }
@@ -1844,23 +1876,28 @@ interface RateLimits {
 
 // Helper: Format time remaining
 function formatTimeRemaining(hours: number): string {
-    if (hours <= 0) return '0m';
+    if (hours <= 0)
+        return '0m';
     const h = Math.floor(hours);
     const m = Math.floor((hours - h) * 60);
-    if (h === 0) return `${m}m`;
-    if (m === 0) return `${h}h`;
+    if (h === 0)
+        return `${m}m`;
+    if (m === 0)
+        return `${h}h`;
     return `${h}h ${m}m`;
 }
 
 // Helper: Format reset time
 function formatResetTime(isoDate: string | null): string {
-    if (!isoDate) return 'unknown';
+    if (!isoDate)
+        return 'unknown';
     try {
         const reset = new Date(isoDate);
         const now = new Date();
         const diffMs = reset.getTime() - now.getTime();
 
-        if (diffMs <= 0) return 'now';
+        if (diffMs <= 0)
+            return 'now';
 
         const totalMins = Math.floor(diffMs / (1000 * 60));
         const hours = Math.floor(totalMins / 60);
@@ -1883,9 +1920,12 @@ function formatResetTime(isoDate: string | null): string {
 
 // Helper: Get quota color based on utilization
 function getQuotaColor(utilization: number): string {
-    if (utilization >= 90) return '🔴';
-    if (utilization >= 70) return '🟡';
-    if (utilization >= 50) return '🟠';
+    if (utilization >= 90)
+        return '🔴';
+    if (utilization >= 70)
+        return '🟡';
+    if (utilization >= 50)
+        return '🟠';
     return '🟢';
 }
 
@@ -2378,7 +2418,7 @@ export class TokenRateWidget implements Widget {
         }
 
         // Get session duration from history - find EARLIEST entry with current sessionId
-        const history = readCachedJSON<{ entries?: Array<{ sessionId?: string; timestamp?: string | number }> }>(PATHS.history, { entries: [] });
+        const history = readCachedJSON<{ entries?: { sessionId?: string; timestamp?: string | number }[] }>(PATHS.history, { entries: [] });
         const entries = history.entries || [];
         const lastEntry = entries[entries.length - 1];
         const currentSessionId = lastEntry?.sessionId;
@@ -2407,8 +2447,10 @@ export class TokenRateWidget implements Widget {
 
         // Format nicely
         const formatTokens = (n: number): string => {
-            if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-            if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+            if (n >= 1000000)
+                return `${(n / 1000000).toFixed(1)}M`;
+            if (n >= 1000)
+                return `${(n / 1000).toFixed(0)}K`;
             return `${Math.round(n)}`;
         };
 
@@ -2472,9 +2514,12 @@ export class CacheSavingsWidget implements Widget {
 
         // Format tokens nicely
         const formatTokens = (n: number): string => {
-            if (n >= 1000000000) return `${(n / 1000000000).toFixed(1)}B`;
-            if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-            if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+            if (n >= 1000000000)
+                return `${(n / 1000000000).toFixed(1)}B`;
+            if (n >= 1000000)
+                return `${(n / 1000000).toFixed(1)}M`;
+            if (n >= 1000)
+                return `${(n / 1000).toFixed(0)}K`;
             return `${Math.round(n)}`;
         };
 
@@ -2590,8 +2635,8 @@ function getEliteMetrics(): {
 
     const codexRouted = metrics.elite?.cost_reduction?.codex_routed ?? 0;
     const haikuRouted = metrics.elite?.cost_reduction?.haiku_routed ?? 0;
-    const totalTasks = metrics.elite?.quality?.tasks_completed ??
-                       sessionMetrics.total_tasks ?? 0;
+    const totalTasks = metrics.elite?.quality?.tasks_completed
+        ?? sessionMetrics.total_tasks ?? 0;
     const routingCount = metrics.kpis?.routing_count ?? (codexRouted + haikuRouted);
 
     return {
@@ -2603,7 +2648,7 @@ function getEliteMetrics(): {
         codexRouted,
         haikuRouted,
         totalTasks,
-        routingCount,
+        routingCount
     };
 }
 
@@ -2620,6 +2665,7 @@ export class EliteSavingsWidget implements Widget {
     getDescription(): string {
         return 'Elite Framework cost savings: routing + compression + semantic cache (tracked data from elite_metrics.json)';
     }
+
     getDisplayName(): string { return 'Elite Savings'; }
     getEditorDisplay(): WidgetEditorDisplay {
         return { displayText: '📈 Elite -$0.48' };
@@ -2644,8 +2690,10 @@ export class EliteSavingsWidget implements Widget {
 
         // Format cost as negative (savings = cost reduction = good)
         const formatCost = (usd: number): string => {
-            if (usd < 0.01) return '-$0.00';
-            if (usd < 1) return `-$${usd.toFixed(2)}`;
+            if (usd < 0.01)
+                return '-$0.00';
+            if (usd < 1)
+                return `-$${usd.toFixed(2)}`;
             return `-$${usd.toFixed(2)}`;
         };
 
@@ -2746,9 +2794,12 @@ export class EliteSavingsLifetimeWidget implements Widget {
 
         // Format tokens nicely with unit
         const formatTokens = (n: number): string => {
-            if (n >= 1000000000) return `${(n / 1000000000).toFixed(1)}B`;
-            if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-            if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+            if (n >= 1000000000)
+                return `${(n / 1000000000).toFixed(1)}B`;
+            if (n >= 1000000)
+                return `${(n / 1000000).toFixed(1)}M`;
+            if (n >= 1000)
+                return `${(n / 1000).toFixed(0)}K`;
             return `${Math.round(n)}`;
         };
 
@@ -2777,7 +2828,7 @@ const ACHIEVEMENTS = [
     { id: 'tasks_25', name: 'Machine', icon: '🤖', desc: '25 tasks/day', check: (s: StreakData) => s.tasks_today >= 25 },
     { id: 'week_50', name: 'Weekly Warrior', icon: '🏆', desc: '50 tasks/week', check: (s: StreakData) => s.tasks_this_week >= 50 },
     { id: 'sessions_100', name: 'Century', icon: '💯', desc: '100 sessions', check: (_s: StreakData, h: { sessions: number; projects: number }) => h.sessions >= 100 },
-    { id: 'sessions_500', name: 'Veteran', icon: '🎖️', desc: '500 sessions', check: (_s: StreakData, h: { sessions: number; projects: number }) => h.sessions >= 500 },
+    { id: 'sessions_500', name: 'Veteran', icon: '🎖️', desc: '500 sessions', check: (_s: StreakData, h: { sessions: number; projects: number }) => h.sessions >= 500 }
 ];
 
 // Level definitions with XP thresholds
@@ -2791,7 +2842,7 @@ const LEVELS = [
     { level: 7, name: 'Legend', xp: 6000, icon: '👑' },
     { level: 8, name: 'Mythic', xp: 12000, icon: '🏆' },
     { level: 9, name: 'Immortal', xp: 25000, icon: '🔱' },
-    { level: 10, name: 'Transcendent', xp: 50000, icon: '✨' },
+    { level: 10, name: 'Transcendent', xp: 50000, icon: '✨' }
 ];
 
 // Calculate XP from various sources
@@ -2948,7 +2999,7 @@ export class DailyChallengeWidget implements Widget {
             { name: 'Workflow Wednesday', target: 15, reward: 150 },
             { name: 'Throughput Thursday', target: 15, reward: 150 },
             { name: 'Final Friday Push', target: 20, reward: 200 },
-            { name: 'Saturday Sprint', target: 8, reward: 80 },
+            { name: 'Saturday Sprint', target: 8, reward: 80 }
         ];
 
         const challenge = challenges[dayOfWeek];
@@ -2996,14 +3047,19 @@ export class PowerUpWidget implements Widget {
         }
 
         const taskRate = streak.tasks_today / Math.max(1, new Date().getHours());
-        if (taskRate > 2) powerUps.push({ icon: '💭', name: 'Flow', bonus: 50 });
-        else if (taskRate > 1) powerUps.push({ icon: '💭', name: 'Focus', bonus: 25 });
+        if (taskRate > 2)
+            powerUps.push({ icon: '💭', name: 'Flow', bonus: 50 });
+        else if (taskRate > 1)
+            powerUps.push({ icon: '💭', name: 'Focus', bonus: 25 });
 
-        if (improvement.task_success_rate > 0.9) powerUps.push({ icon: '✨', name: 'Precision', bonus: 20 });
+        if (improvement.task_success_rate > 0.9)
+            powerUps.push({ icon: '✨', name: 'Precision', bonus: 20 });
 
         const hour = new Date().getHours();
-        if (hour >= 6 && hour <= 10) powerUps.push({ icon: '🌅', name: 'Early Bird', bonus: 15 });
-        else if (hour >= 21) powerUps.push({ icon: '🦉', name: 'Night Owl', bonus: 15 });
+        if (hour >= 6 && hour <= 10)
+            powerUps.push({ icon: '🌅', name: 'Early Bird', bonus: 15 });
+        else if (hour >= 21)
+            powerUps.push({ icon: '🦉', name: 'Night Owl', bonus: 15 });
 
         if (powerUps.length === 0) {
             return item.rawValue ? '0' : '⚡ No power-ups │ Build a streak or enter flow state!';
@@ -3044,16 +3100,15 @@ export class MomentumWidget implements Widget {
         momentum += Math.min(30, (streak.tasks_today / Math.max(1, hour)) * 15);
         momentum += Math.min(25, streak.current_streak * 5);
         momentum += improvement.task_success_rate * 25;
-        if ((hour >= 9 && hour <= 12) || (hour >= 14 && hour <= 17)) momentum += 10;
-        if (streak.current_streak >= 3) momentum += 10;
+        if ((hour >= 9 && hour <= 12) || (hour >= 14 && hour <= 17))
+            momentum += 10;
+        if (streak.current_streak >= 3)
+            momentum += 10;
         momentum = Math.min(100, momentum);
 
         let status = 'Building';
         let fires = '';
-        if (momentum >= 90) { status = 'UNSTOPPABLE'; fires = '🔥🔥🔥🔥🔥'; }
-        else if (momentum >= 75) { status = 'ON FIRE'; fires = '🔥🔥🔥'; }
-        else if (momentum >= 50) { status = 'ROLLING'; fires = '🔥🔥'; }
-        else if (momentum >= 25) { status = 'WARMING UP'; fires = '🔥'; }
+        if (momentum >= 90) { status = 'UNSTOPPABLE'; fires = '🔥🔥🔥🔥🔥'; } else if (momentum >= 75) { status = 'ON FIRE'; fires = '🔥🔥🔥'; } else if (momentum >= 50) { status = 'ROLLING'; fires = '🔥🔥'; } else if (momentum >= 25) { status = 'WARMING UP'; fires = '🔥'; }
 
         const bar = progressBar(momentum, 12);
 
@@ -3095,8 +3150,10 @@ export class UnifiedGamificationWidget implements Widget {
         const momentum = Math.min(100, taskRate * 15 + streak.current_streak * 5 + improvement.task_success_rate * 25);
 
         let momentumStatus = 'Building';
-        if (momentum >= 75) momentumStatus = 'ON FIRE 🔥';
-        else if (momentum >= 50) momentumStatus = 'Rolling';
+        if (momentum >= 75)
+            momentumStatus = 'ON FIRE 🔥';
+        else if (momentum >= 50)
+            momentumStatus = 'Rolling';
 
         return item.rawValue
             ? `Lv${current.level}│🔥${streak.current_streak}│${unlocked}/10`
@@ -3184,14 +3241,16 @@ export class PersonalizedInsightsWidget implements Widget {
 
         // Filter out expired insights
         const now = new Date();
-        insights = insights.filter(i => {
-            if (!i.expires) return true;
+        insights = insights.filter((i) => {
+            if (!i.expires)
+                return true;
             return new Date(i.expires) > now;
         });
 
         // Sort by priority (desc) then timestamp (desc) and take top 5
         insights.sort((a, b) => {
-            if (b.priority !== a.priority) return b.priority - a.priority;
+            if (b.priority !== a.priority)
+                return b.priority - a.priority;
             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
         });
 
@@ -3254,13 +3313,13 @@ export class PersonalizedInsightsWidget implements Widget {
         if (item.rawValue) {
             // Raw mode: just show latest insight message
             const first = top5[0];
-            if (!first) return 'No insights';
+            if (!first)
+                return 'No insights';
             return `${first.icon} ${first.message}`;
         }
 
         // Full mode: show 2-3 insights with timestamps
-        const formatted = top5.slice(0, 3).map(i =>
-            `${formatTimestamp(i.timestamp)} ${i.icon} ${i.message}`
+        const formatted = top5.slice(0, 3).map(i => `${formatTimestamp(i.timestamp)} ${i.icon} ${i.message}`
         ).join(' │ ');
 
         return `📣 ${formatted}`;
@@ -3429,9 +3488,7 @@ interface ExpertisePatterns {
             performance?: number;
         };
     };
-    summary?: {
-        total_frequency?: number;
-    };
+    summary?: { total_frequency?: number };
 }
 
 export class BreakthroughMeterWidget implements Widget {
@@ -3452,8 +3509,8 @@ export class BreakthroughMeterWidget implements Widget {
         const patterns = expertise.elite_sdk?.patterns_found ?? {};
 
         // Calculate total known patterns (or use summary if available)
-        const totalPatterns = expertise.summary?.total_frequency ??
-            Object.values(patterns).reduce((sum, count) => sum + (count ?? 0), 0);
+        const totalPatterns = expertise.summary?.total_frequency
+            ?? Object.values(patterns).reduce((sum, count) => sum + (count ?? 0), 0);
 
         // Determine breakthrough level based on pattern density
         // Low patterns = more novel territory
@@ -3633,7 +3690,8 @@ export class EvolutionVectorWidget implements Widget {
         };
 
         for (const [key, metric] of Object.entries(metrics)) {
-            if (!metric?.baseline || !metric?.current) continue;
+            if (!metric?.baseline || !metric?.current)
+                continue;
 
             let improvement: number;
             if (key === 'avg_task_duration_ms') {
@@ -3649,12 +3707,18 @@ export class EvolutionVectorWidget implements Widget {
                 bestMetric = metricNames[key] ?? key;
 
                 // Determine arrow based on improvement direction
-                if (improvement > 10) bestArrow = '↑';
-                else if (improvement > 5) bestArrow = '↗';
-                else if (improvement > 0) bestArrow = '→';
-                else if (improvement > -5) bestArrow = '→';
-                else if (improvement > -10) bestArrow = '↘';
-                else bestArrow = '↓';
+                if (improvement > 10)
+                    bestArrow = '↑';
+                else if (improvement > 5)
+                    bestArrow = '↗';
+                else if (improvement > 0)
+                    bestArrow = '→';
+                else if (improvement > -5)
+                    bestArrow = '→';
+                else if (improvement > -10)
+                    bestArrow = '↘';
+                else
+                    bestArrow = '↓';
             }
         }
 
@@ -3691,7 +3755,7 @@ const HELP_TIPS = [
     '💡 Bugs:4 = bugs prevented | Cmpr:32% = compression ratio (higher = smaller)',
     '💡 Work:OPTIMIZING = task type | Disk:90% (🟡≥75 🟠≥85 🔴≥95) = storage',
     '💡 Mypy:3.3K = type errors (tech debt baseline) | Saved:4h = time saved',
-    '💡 ↻ 3d4h = quota resets in 3 days 4 hours | Trend:Stable = metric direction',
+    '💡 ↻ 3d4h = quota resets in 3 days 4 hours | Trend:Stable = metric direction'
 ];
 
 export class HelpLegendWidget implements Widget {
@@ -3790,7 +3854,8 @@ export class EliteScoreWidget implements Widget {
             for (const file of files) {
                 try {
                     const state = JSON.parse(fs.readFileSync(path.join(circuitDir, file), 'utf-8')) as CircuitState;
-                    if (state.state === 'closed' || !state.state) healthy++;
+                    if (state.state === 'closed' || !state.state)
+                        healthy++;
                 } catch { /* skip */ }
             }
             cbPart = `${healthy}✓`;
@@ -3807,9 +3872,12 @@ export class EliteScoreWidget implements Widget {
         const hasPatterns = (patterns.patterns?.length ?? 0) > 0;
         const hasNeural = neuralTelemetry;
 
-        if (hasCache && hasPatterns && hasNeural) levelPart = 'L3';
-        else if (hasCache && hasPatterns) levelPart = 'L2';
-        else if (hasCache) levelPart = 'L1';
+        if (hasCache && hasPatterns && hasNeural)
+            levelPart = 'L3';
+        else if (hasCache && hasPatterns)
+            levelPart = 'L2';
+        else if (hasCache)
+            levelPart = 'L1';
 
         // Unified format: 89%🟡|34✓|L3
         return item.rawValue

@@ -38,7 +38,8 @@ function getCached<T>(key: string, fetcher: () => T): T {
 function getCPUUsage(): number {
     return getCached('cpu', () => {
         const cpus = os.cpus();
-        if (cpus.length === 0) return 0;
+        if (cpus.length === 0)
+            return 0;
 
         let totalIdle = 0;
         let totalTick = 0;

@@ -166,7 +166,8 @@ export class EliteImpactCostWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (eliteCost <= 0) return '—';
+            if (eliteCost <= 0)
+                return '—';
             return formatCost(eliteCost);
         }
 
@@ -227,13 +228,15 @@ export class EliteTotalValueWidget implements Widget {
                 // Only show percentage if we have valid session cost data
                 parts.push(savingsPct > 0 ? `C:${costStr}/${savingsPct}%` : `C:${costStr}`);
             }
-            if (totalBugs > 0) parts.push(`Q:${totalBugs}`);
+            if (totalBugs > 0)
+                parts.push(`Q:${totalBugs}`);
             return parts.length > 0 ? parts.join(' ') : '—';
         }
 
         // Full mode: show total value
         const totalValue = metrics?.totals?.total_elite_value_usd ?? 0;
-        if (totalValue <= 0) return null;
+        if (totalValue <= 0)
+            return null;
         return `Value ${formatCost(totalValue)}`;
     }
 
@@ -263,7 +266,8 @@ export class EliteCompressionRatioWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (ratio >= 1.0) return '—';
+            if (ratio >= 1.0)
+                return '—';
             return `${ratio.toFixed(2)}×`;
         }
 
@@ -302,7 +306,8 @@ export class EliteRoutingCountWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (count <= 0) return '—';
+            if (count <= 0)
+                return '—';
             return `${count}`;
         }
 
@@ -344,7 +349,8 @@ export class EliteSpeedupWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (speedup <= 1.0) return '—';
+            if (speedup <= 1.0)
+                return '—';
             return `${speedup.toFixed(1)}×`;
         }
 
@@ -383,7 +389,8 @@ export class EliteLatencySavedWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (latency <= 0) return '—';
+            if (latency <= 0)
+                return '—';
             return formatTime(latency);
         }
 
@@ -422,7 +429,8 @@ export class ElitePredictionWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (accuracy <= 0) return '—';
+            if (accuracy <= 0)
+                return '—';
             return `${accuracy.toFixed(0)}%`;
         }
 
@@ -464,7 +472,8 @@ export class EliteFirstTryWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (rate <= 0) return '—';
+            if (rate <= 0)
+                return '—';
             return `${rate.toFixed(0)}%`;
         }
 
@@ -502,7 +511,8 @@ export class EliteBugsPreventedWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (bugs <= 0) return '—';
+            if (bugs <= 0)
+                return '—';
             return `${bugs}`;
         }
 
@@ -540,7 +550,8 @@ export class EliteSecurityWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (security <= 0) return '—';
+            if (security <= 0)
+                return '—';
             return `${security}`;
         }
 
@@ -582,7 +593,8 @@ export class ElitePatternsWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (patterns <= 0) return '—';
+            if (patterns <= 0)
+                return '—';
             return `${patterns}`;
         }
 
@@ -620,7 +632,8 @@ export class EliteCacheHitWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (rate <= 0) return '—';
+            if (rate <= 0)
+                return '—';
             return `${rate.toFixed(0)}%`;
         }
 
@@ -735,7 +748,8 @@ export class TotalSavingsWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (total <= 0) return '—';
+            if (total <= 0)
+                return '—';
             return formatCost(total);
         }
 

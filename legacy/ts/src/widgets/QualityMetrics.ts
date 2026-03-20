@@ -8,10 +8,10 @@
  * - TechDebt: Shows tech debt count (e.g., mypy errors)
  */
 
+import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 
 import type { RenderContext } from '../types/RenderContext';
 import type { Settings } from '../types/Settings';
@@ -65,13 +65,16 @@ function getDiskSpace(): DiskInfo | null {
             });
 
             const lines = output.trim().split('\n');
-            if (lines.length < 2) return null;
+            if (lines.length < 2)
+                return null;
 
             // Parse: Filesystem Size Used Avail Capacity ...
             const dataLine = lines[1];
-            if (!dataLine) return null;
+            if (!dataLine)
+                return null;
             const parts = dataLine.split(/\s+/);
-            if (parts.length < 5) return null;
+            if (parts.length < 5)
+                return null;
 
             const available = parts[3] ?? ''; // e.g., "84Gi" or "147G"
             const capacityStr = (parts[4] ?? '0').replace('%', ''); // e.g., "45"
@@ -79,15 +82,15 @@ function getDiskSpace(): DiskInfo | null {
 
             // Parse available space to bytes for calculations
             let availableBytes = 0;
-            const match = available.match(/^([\d.]+)([KMGT]i?)?$/i);
-            if (match && match[1]) {
+            const match = /^([\d.]+)([KMGT]i?)?$/i.exec(available);
+            if (match?.[1]) {
                 const num = parseFloat(match[1]);
                 const unit = (match[2] || '').toUpperCase().replace('I', '');
                 const multipliers: Record<string, number> = {
-                    'K': 1024,
-                    'M': 1024 * 1024,
-                    'G': 1024 * 1024 * 1024,
-                    'T': 1024 * 1024 * 1024 * 1024
+                    K: 1024,
+                    M: 1024 * 1024,
+                    G: 1024 * 1024 * 1024,
+                    T: 1024 * 1024 * 1024 * 1024
                 };
                 availableBytes = num * (multipliers[unit] || 1);
             }
@@ -159,8 +162,8 @@ function getMypyBaseline(): number | null {
         if (fs.existsSync(claudeMd)) {
             const content = fs.readFileSync(claudeMd, 'utf-8');
             // Look for pattern like "Mypy errors | 3,257"
-            const match = content.match(/[Mm]ypy\s*(?:errors?)?\s*\|?\s*([\d,]+)/);
-            if (match && match[1]) {
+            const match = /[Mm]ypy\s*(?:errors?)?\s*\|?\s*([\d,]+)/.exec(content);
+            if (match?.[1]) {
                 return parseInt(match[1].replace(/,/g, ''), 10);
             }
         }
@@ -258,9 +261,12 @@ export class DiskUsagePercentWidget implements Widget {
 
         // Semantic warning indicators for disk usage (high = bad)
         const getWarningIndicator = (pct: number): string => {
-            if (pct >= 95) return '🔴';  // Critical: almost full
-            if (pct >= 85) return '🟠';  // Warning: getting full
-            if (pct >= 75) return '🟡';  // Caution: above normal
+            if (pct >= 95)
+                return '🔴';  // Critical: almost full
+            if (pct >= 85)
+                return '🟠';  // Warning: getting full
+            if (pct >= 75)
+                return '🟡';  // Caution: above normal
             return '';  // Normal: no indicator
         };
 
@@ -321,9 +327,12 @@ export class TestsPercentageWidget implements Widget {
 
         // Semantic warning indicators for coverage (low = bad)
         const getWarningIndicator = (pct: number): string => {
-            if (pct < 50) return '🔴';   // Critical: <50% coverage
-            if (pct < 70) return '🟠';   // Warning: <70% coverage
-            if (pct < 85) return '🟡';   // Caution: <85% coverage
+            if (pct < 50)
+                return '🔴';   // Critical: <50% coverage
+            if (pct < 70)
+                return '🟠';   // Warning: <70% coverage
+            if (pct < 85)
+                return '🟡';   // Caution: <85% coverage
             return '';  // Good: ≥85%
         };
 
@@ -435,11 +444,15 @@ export class TechDebtWidget implements Widget {
 
         if (item.rawValue) {
             // Compact: skip zeros, use short format
-            if (mypy !== null && mypy > 0) parts.push(`M:${formatNumber(mypy)}`);
-            if (todo > 0) parts.push(`T:${todo}`);
-            if (lint > 0) parts.push(`L:${lint}`);
+            if (mypy !== null && mypy > 0)
+                parts.push(`M:${formatNumber(mypy)}`);
+            if (todo > 0)
+                parts.push(`T:${todo}`);
+            if (lint > 0)
+                parts.push(`L:${lint}`);
 
-            if (parts.length === 0) return '✓';  // No debt!
+            if (parts.length === 0)
+                return '✓';  // No debt!
             return parts.join(' ');
         }
 

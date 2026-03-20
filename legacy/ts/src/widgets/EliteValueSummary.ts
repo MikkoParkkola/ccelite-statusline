@@ -186,16 +186,22 @@ function formatDuration(ms: number): string {
 }
 
 function formatAge(seconds: number): string {
-    if (seconds < 60) return 'now';
-    if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`;
+    if (seconds < 60)
+        return 'now';
+    if (seconds < 3600)
+        return `${Math.round(seconds / 60)}m ago`;
+    if (seconds < 86400)
+        return `${Math.round(seconds / 3600)}h ago`;
     return `${Math.round(seconds / 86400)}d ago`;
 }
 
 function getFreshnessIndicator(data: MetricsWithFreshness): string {
-    if (data.isFresh) return '🟢';
-    if (data.isStale) return '🟡';
-    if (data.isVeryStale) return '🔴';
+    if (data.isFresh)
+        return '🟢';
+    if (data.isStale)
+        return '🟡';
+    if (data.isVeryStale)
+        return '🔴';
     return '⚪';
 }
 
@@ -305,8 +311,8 @@ export class EliteQuickWinsWidget implements Widget {
 
         // Time saved (from parallel + latency)
         const latencySaved = metrics.elite?.speed?.latency_saved_ms ?? 0;
-        const parallelTimeSaved = (metrics.elite?.speed?.sequential_time_ms ?? 0) -
-                                   (metrics.elite?.speed?.parallel_time_ms ?? 0);
+        const parallelTimeSaved = (metrics.elite?.speed?.sequential_time_ms ?? 0)
+            - (metrics.elite?.speed?.parallel_time_ms ?? 0);
         const totalTimeSaved = Math.max(0, latencySaved + parallelTimeSaved);
         if (totalTimeSaved > 1000) {
             parts.push(formatDuration(totalTimeSaved));

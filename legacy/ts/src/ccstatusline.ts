@@ -72,7 +72,8 @@ function refreshStaleCaches(): void {
     lastRefreshAttempt = now;
 
     const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    if (!homeDir) return;
+    if (!homeDir)
+        return;
 
     const hooksLibDir = path.join(homeDir, '.claude', 'hooks', 'lib');
     const cacheFile = path.join(hooksLibDir, '.statusline_cache.json');
@@ -81,12 +82,14 @@ function refreshStaleCaches(): void {
 
     try {
         // Check if cache exists
-        if (!fs.existsSync(cacheFile)) return;
+        if (!fs.existsSync(cacheFile))
+            return;
 
         // Check lock file - if another refresh is in progress (lock < 60s old), skip
         if (fs.existsSync(lockFile)) {
             const lockAge = (Date.now() - fs.statSync(lockFile).mtimeMs) / 1000;
-            if (lockAge < 60) return; // Another refresh in progress
+            if (lockAge < 60)
+                return; // Another refresh in progress
             // Lock is stale, remove it
             try { fs.unlinkSync(lockFile); } catch { /* ignore */ }
         }
@@ -99,13 +102,15 @@ function refreshStaleCaches(): void {
             return; // Corrupted cache, skip refresh (will be rebuilt eventually)
         }
 
-        if (!cacheData.updated_at) return;
+        if (!cacheData.updated_at)
+            return;
 
         // Safe date parsing with fallback
         let updatedAt: Date;
         try {
             updatedAt = new Date(cacheData.updated_at);
-            if (isNaN(updatedAt.getTime())) return; // Invalid date
+            if (isNaN(updatedAt.getTime()))
+                return; // Invalid date
         } catch {
             return;
         }
@@ -191,31 +196,8 @@ function refreshStaleCaches(): void {
                 streakChild.unref();
             }
 
-            // Refresh quota data (usage_cache.json for rate limit widgets)
-            const quotaScript = path.join(homeDir, '.claude', 'bin', 'claude-quota');
-            const quotaCacheFile = path.join(homeDir, '.claude', 'data', 'usage_cache.json');
-            if (fs.existsSync(quotaScript)) {
-                // Check if quota cache is stale (>5 minutes)
-                let quotaStale = true;
-                if (fs.existsSync(quotaCacheFile)) {
-                    try {
-                        const quotaData = JSON.parse(fs.readFileSync(quotaCacheFile, 'utf-8'));
-                        if (quotaData.fetched_at) {
-                            const fetchedAt = new Date(quotaData.fetched_at);
-                            const quotaAge = (Date.now() - fetchedAt.getTime()) / 1000;
-                            quotaStale = quotaAge > MAX_CACHE_AGE_SECONDS;
-                        }
-                    } catch { /* assume stale on error */ }
-                }
-                if (quotaStale) {
-                    const quotaChild = spawn(quotaScript, ['refresh'], {
-                        detached: true,
-                        stdio: 'ignore',
-                        env: process.env
-                    });
-                    quotaChild.unref();
-                }
-            }
+            // Quota refresh removed: rate limit data now comes directly via stdin
+            // rate_limits field (CC 2.1.80+), no cache needed
         }
     } catch {
         // Best-effort: silently ignore all errors

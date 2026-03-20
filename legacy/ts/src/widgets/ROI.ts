@@ -59,10 +59,12 @@ function getLatestTaskROI(): ROIEstimate | null {
         }
         const content = fs.readFileSync(roiFile, 'utf-8');
         const lines = content.trim().split('\n').filter(l => l.trim());
-        if (lines.length === 0) return null;
+        if (lines.length === 0)
+            return null;
 
         const lastLine = lines[lines.length - 1];
-        if (!lastLine) return null;
+        if (!lastLine)
+            return null;
         return JSON.parse(lastLine) as ROIEstimate;
     } catch {
         return null;
@@ -96,7 +98,8 @@ export class ROIWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (roiValue === undefined || roiValue <= 0) return '—';
+            if (roiValue === undefined || roiValue <= 0)
+                return '—';
             const formatted = roiValue >= 1000
                 ? `${(roiValue / 1000).toFixed(1)}K×`
                 : roiValue >= 100
@@ -149,7 +152,8 @@ export class SessionNPVWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (value === undefined || value <= 0) return '—';
+            if (value === undefined || value <= 0)
+                return '—';
 
             let formatted: string;
             if (value >= 1000000) {

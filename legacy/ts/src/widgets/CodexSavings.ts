@@ -49,7 +49,8 @@ export class CodexRoutedWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (!count || count === 0) return '—';
+            if (!count || count === 0)
+                return '—';
             return `${count}`;
         }
 
@@ -84,7 +85,8 @@ export class CodexSavingsWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (!savings || savings <= 0) return '—';
+            if (!savings || savings <= 0)
+                return '—';
             return `$${savings.toFixed(2)}`;
         }
 
@@ -119,7 +121,8 @@ export class CodexTokensSavedWidget implements Widget {
 
         // rawValue mode: ALWAYS return a value (never null)
         if (item.rawValue) {
-            if (!tokens || tokens <= 0) return '—';
+            if (!tokens || tokens <= 0)
+                return '—';
 
             let formatted: string;
             if (tokens >= 1000000) {
@@ -173,7 +176,8 @@ export class CodexEfficiencyWidget implements Widget {
         // rawValue mode: ALWAYS return a value (never null)
         // Use "N tasks" format - label provides context (GPT-5:)
         if (item.rawValue) {
-            if (count === 0) return '—';
+            if (count === 0)
+                return '—';
             return `${count} tasks`;
         }
 

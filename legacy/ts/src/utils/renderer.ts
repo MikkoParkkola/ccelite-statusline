@@ -349,7 +349,7 @@ function renderPowerlineStatusLine(
             // Determine which separator to use
             // For zigzag effect: use "/" for even lines and "\" for odd lines
             const globalIndex = globalSeparatorOffset + i;
-            let separatorIndex = Math.min(globalIndex, separators.length - 1);
+            const separatorIndex = Math.min(globalIndex, separators.length - 1);
             let separator = separators[separatorIndex] ?? '\uE0B0';
             let shouldInvert = invertBgs[separatorIndex] ?? false;
 
@@ -646,7 +646,7 @@ export function calculateMaxWidthsFromPreRendered(
             while (j < filteredWidgets.length - 1 && filteredWidgets[j]?.widget.merge && filteredWidgets[j]?.content) {
                 j++;
                 const nextWidget = filteredWidgets[j];
-                if (nextWidget && nextWidget.content) {
+                if (nextWidget?.content) {
                     // For merged widgets, add width but account for padding adjustments
                     // When merging with 'no-padding', don't count padding between widgets
                     if (filteredWidgets[j - 1]?.widget.merge === 'no-padding') {

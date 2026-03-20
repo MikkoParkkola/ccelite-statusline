@@ -30,6 +30,11 @@ const widgetRegistry = new Map<WidgetItemType, Widget>([
     ['custom-command', new widgets.CustomCommandWidget()],
     ['claude-session-id', new widgets.ClaudeSessionIdWidget()],
 
+    // Elite widgets - Cost & efficiency metrics
+    ['cost-velocity', new widgets.CostVelocityWidget()],
+    ['cost-per-line', new widgets.CostPerLineWidget()],
+    ['cache-ratio', new widgets.CacheRatioWidget()],
+
     // Elite widgets - ROI tracking
     ['roi', new widgets.ROIWidget()],
     ['session-npv', new widgets.SessionNPVWidget()],
@@ -102,6 +107,11 @@ const widgetRegistry = new Map<WidgetItemType, Widget>([
     ['unified-streak', new widgets.UnifiedStreakWidget()],
     ['unified-savings', new widgets.UnifiedSavingsWidget()],
     ['unified-team', new widgets.UnifiedTeamComparisonWidget()],
+    // v5.0.0: Rate limit widgets (CC 2.1.80 stdin rate_limits field)
+    ['rate-5h', new widgets.Rate5hWidget()],
+    ['rate-7d', new widgets.Rate7dWidget()],
+    ['rate-reset', new widgets.RateResetWidget()],
+
     // v3.4.0: 📊 QUOTA & LIMITS WIDGETS
     ['session-quota', new widgets.SessionQuotaWidget()],
     ['weekly-quota', new widgets.WeeklyQuotaWidget()],

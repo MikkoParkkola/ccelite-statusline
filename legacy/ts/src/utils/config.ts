@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import { ELITE_DEFAULT_CONFIG } from '../configs/elite-default';
 import {
     CURRENT_VERSION,
     SettingsSchema,
@@ -13,8 +14,6 @@ import {
     migrateConfig,
     needsMigration
 } from './migrations';
-
-import { ELITE_DEFAULT_CONFIG } from '../configs/elite-default';
 
 // Use fs.promises directly (always available in modern Node.js)
 const readFile = fs.promises.readFile;

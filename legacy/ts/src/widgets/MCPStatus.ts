@@ -15,9 +15,7 @@ interface MCPServer {
     args?: string[];
 }
 
-interface ClaudeSettings {
-    mcpServers?: Record<string, MCPServer>;
-}
+interface ClaudeSettings { mcpServers?: Record<string, MCPServer> }
 
 function countMCPServers(): { count: number; names: string[] } {
     try {

@@ -43,7 +43,8 @@ export class SessionClockWidget implements Widget {
             const now = new Date();
             const diffMs = now.getTime() - start.getTime();
 
-            if (diffMs <= 0) return '0m';
+            if (diffMs <= 0)
+                return '0m';
 
             const totalMins = Math.floor(diffMs / (1000 * 60));
             const days = Math.floor(totalMins / (24 * 60));

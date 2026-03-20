@@ -17,11 +17,7 @@ interface HookConfig {
     timeout?: number;
 }
 
-interface ClaudeSettings {
-    hooks?: {
-        [key: string]: HookConfig[];
-    };
-}
+interface ClaudeSettings { hooks?: Record<string, HookConfig[]> }
 
 function countHooks(): { total: number; byEvent: Record<string, number> } {
     try {
@@ -126,9 +122,12 @@ export class HooksBreakdownWidget implements Widget {
 
         // Build compact breakdown
         const parts: string[] = [];
-        if (hooks.byEvent['SessionStart']) parts.push(`S:${hooks.byEvent['SessionStart']}`);
-        if (hooks.byEvent['PreToolUse']) parts.push(`Pre:${hooks.byEvent['PreToolUse']}`);
-        if (hooks.byEvent['PostToolUse']) parts.push(`Post:${hooks.byEvent['PostToolUse']}`);
+        if (hooks.byEvent.SessionStart)
+            parts.push(`S:${hooks.byEvent.SessionStart}`);
+        if (hooks.byEvent.PreToolUse)
+            parts.push(`Pre:${hooks.byEvent.PreToolUse}`);
+        if (hooks.byEvent.PostToolUse)
+            parts.push(`Post:${hooks.byEvent.PostToolUse}`);
 
         if (parts.length === 0) {
             return null;
