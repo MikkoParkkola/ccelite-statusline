@@ -1106,6 +1106,159 @@ pub fn render_project_elite(input: &StatusInput) -> Option<String> {
     }
 }
 
+/// Render token phase from ~/.claude/data/token_phase.json
+///
+/// Format: "🟢full", "🟡save", "🟠tight", "🔴crit"
+pub fn render_token_phase() -> Option<String> {
+    let path = dirs::home_dir()?
+        .join(".claude")
+        .join("data")
+        .join("token_phase.json");
+
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(phase) = json.get("phase").and_then(|p| p.as_str()) {
+                return Some(match phase {
+                    "full" => "\u{1f7e2}full".to_string(),
+                    "save" => "\u{1f7e1}save".to_string(),
+                    "tight" => "\u{1f7e0}tight".to_string(),
+                    "crit" | "critical" => "\u{1f534}crit".to_string(),
+                    other => other.to_string(),
+                });
+            }
+        }
+    }
+
+    Some("\u{2014}".to_string())
+}
+
+/// Render event bus line count from ~/.claude/data/event_bus.jsonl
+///
+/// Format: "+N"
+pub fn render_event_bus_count() -> Option<String> {
+    let path = dirs::home_dir()?
+        .join(".claude")
+        .join("data")
+        .join("event_bus.jsonl");
+
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        let count = content.lines().filter(|l| !l.trim().is_empty()).count();
+        return Some(format!("+{}", count));
+    }
+
+    Some("0".to_string())
+}
+
+/// Render recent failures (last hour) from ~/.claude/data/failures.jsonl
+///
+/// Format: "N"
+pub fn render_recent_fails() -> Option<String> {
+    let path = dirs::home_dir()?
+        .join(".claude")
+        .join("data")
+        .join("failures.jsonl");
+
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        let now = std::time::SystemTime::now();
+        let one_hour_ago = now
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_secs()
+            .saturating_sub(3600);
+
+        let count = content
+            .lines()
+            .filter(|line| {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                    // Try "timestamp" (epoch seconds or ISO string)
+                    if let Some(ts) = json.get("timestamp").or_else(|| json.get("ts")) {
+                        if let Some(epoch) = ts.as_u64().or_else(|| ts.as_f64().map(|f| f as u64))
+                        {
+                            return epoch >= one_hour_ago;
+                        }
+                        // ISO string fallback
+                        if let Some(s) = ts.as_str() {
+                            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+                                return dt.timestamp() as u64 >= one_hour_ago;
+                            }
+                        }
+                    }
+                }
+                false
+            })
+            .count();
+        return Some(count.to_string());
+    }
+
+    Some("0".to_string())
+}
+
+/// Render proposal queue depth from ~/.claude/data/improvements/proposals.jsonl
+///
+/// Format: "N"
+pub fn render_proposal_queue() -> Option<String> {
+    let path = dirs::home_dir()?
+        .join(".claude")
+        .join("data")
+        .join("improvements")
+        .join("proposals.jsonl");
+
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        let count = content.lines().filter(|l| !l.trim().is_empty()).count();
+        return Some(count.to_string());
+    }
+
+    Some("0".to_string())
+}
+
+/// Render burn rate ($N/hr) from session cost and duration.
+///
+/// Format: "$4/hr", "$0.50/hr", "—"
+pub fn render_burn_rate(input: &StatusInput) -> Option<String> {
+    let cost = input.cost.as_ref().and_then(|c| c.total_cost_usd)?;
+    let duration_ms = input
+        .cost
+        .as_ref()
+        .and_then(|c| c.total_duration_ms)
+        .or_else(|| input.session.as_ref().and_then(|s| s.duration_ms))
+        .unwrap_or(0);
+
+    if duration_ms == 0 || cost <= 0.0 {
+        return Some("\u{2014}".to_string());
+    }
+
+    let hours = duration_ms as f64 / 3_600_000.0;
+    let rate = cost / hours;
+
+    Some(if rate >= 10.0 {
+        format!("${:.0}/hr", rate)
+    } else if rate >= 1.0 {
+        format!("${:.1}/hr", rate)
+    } else {
+        format!("${:.2}/hr", rate)
+    })
+}
+
+/// Render count of active Claude agent/task processes.
+///
+/// Format: "N"
+pub fn render_active_agents() -> Option<String> {
+    let output = Command::new("pgrep")
+        .args(["-f", "claude"])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let count = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .count();
+        Some(count.to_string())
+    } else {
+        Some("0".to_string())
+    }
+}
+
 /// Render rate limiting status
 pub fn render_rate_status() -> Option<String> {
     let cache_path = dirs::home_dir()?

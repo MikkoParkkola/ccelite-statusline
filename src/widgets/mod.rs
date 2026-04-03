@@ -61,7 +61,14 @@ pub fn render_widget(item: &WidgetItem, ctx: &RenderContext) -> Option<String> {
         "rate-status" => render_rate_status(),
         "session-quota" => render_session_quota(ctx.input),
         "weekly-quota" => render_weekly_quota(ctx.input),
-        // New widgets
+        // New widgets (2026-04-03)
+        "token-phase" => render_token_phase(),
+        "event-bus" => render_event_bus_count(),
+        "recent-fails" => render_recent_fails(),
+        "proposal-queue" => render_proposal_queue(),
+        "burn-rate" => render_burn_rate(ctx.input),
+        "active-agents" => render_active_agents(),
+        // Existing new widgets
         "context-collapse-risk" => render_context_collapse_risk(ctx.input),
         "bugs-clarity" => render_bugs_clarity(),
         "burn-rate-clarity" => render_burn_rate_clarity(ctx.input),
