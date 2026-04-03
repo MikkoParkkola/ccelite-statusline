@@ -68,6 +68,11 @@ pub fn render_widget(item: &WidgetItem, ctx: &RenderContext) -> Option<String> {
         "proposal-queue" => render_proposal_queue(),
         "burn-rate" => render_burn_rate(ctx.input),
         "active-agents" => render_active_agents(),
+        "tools-count" => render_tools_count(),
+        "commits-today" => render_commits_today(),
+        "saved-per-session" => render_saved_per_session(),
+        "db-events" => render_db_events(),
+        "daemon-latency" => render_daemon_latency(),
         // Existing new widgets
         "context-collapse-risk" => render_context_collapse_risk(ctx.input),
         "bugs-clarity" => render_bugs_clarity(),
