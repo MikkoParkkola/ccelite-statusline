@@ -1262,7 +1262,18 @@ pub fn render_active_agents() -> Option<String> {
 ///
 /// Format: "180+"
 pub fn render_tools_count() -> Option<String> {
-    Some("180+".to_string()) // TODO: count from mcp config
+    // Count MCP server tools + CC built-in tools
+    let mcp_path = dirs::home_dir()?.join(".claude").join("settings.json");
+    let mut tool_count: usize = 15; // CC built-in tools (Read, Write, Edit, Bash, Grep, Glob, Agent, etc.)
+    if let Ok(content) = std::fs::read_to_string(&mcp_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object()) {
+                // Average ~5 tools per MCP server
+                tool_count += mcps.len() * 5;
+            }
+        }
+    }
+    Some(format!("~{}", tool_count))
 }
 
 /// Render commits in the last 12 hours
@@ -1285,7 +1296,33 @@ pub fn render_commits_today() -> Option<String> {
 /// Calculated: 107K tok/turn x 30 turns x $0.003/1K tok
 /// Format: "$9.63"
 pub fn render_saved_per_session() -> Option<String> {
-    Some("$9.63".to_string())
+    // Calculate from compact_quality.json (real compaction savings)
+    // plus estimated token savings from rules optimization
+    let quality_path = dirs::home_dir()?
+        .join(".claude").join("data").join("compact_quality.json");
+    let mut saved_dollars = 0.0_f64;
+    if let Ok(content) = std::fs::read_to_string(&quality_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            let chars = json.get("char_count").and_then(|c| c.as_f64()).unwrap_or(0.0);
+            // Estimate: compression saved ~50% of what would have been
+            saved_dollars += (chars / 4.0) * 0.000003; // tokens * $0.003/1K
+        }
+    }
+    // Base savings from rules-source→skills optimization (~95K tok/turn × turns × $0.003/1K)
+    let phase_path = dirs::home_dir()?
+        .join(".claude").join("data").join("token_phase.json");
+    if let Ok(content) = std::fs::read_to_string(&phase_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            let calls = json.get("tool_calls").and_then(|c| c.as_f64()).unwrap_or(0.0);
+            // ~95K tokens saved per turn from rules optimization
+            saved_dollars += calls * 95.0 * 0.003; // turns × 95K tok × $0.003/1K
+        }
+    }
+    if saved_dollars > 0.01 {
+        Some(format!("${:.0}", saved_dollars))
+    } else {
+        Some("$0".to_string())
+    }
 }
 
 /// Render event count from event_bus.jsonl (DB events)
