@@ -1243,15 +1243,13 @@ pub fn render_burn_rate(input: &StatusInput) -> Option<String> {
 ///
 /// Format: "N"
 pub fn render_active_agents() -> Option<String> {
-    let output = Command::new("pgrep")
-        .args(["-f", "claude"])
-        .output()
-        .ok()?;
-
-    if output.status.success() {
-        let count = String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter(|l| !l.trim().is_empty())
+    // Count background agent worktrees (reliable signal for active agents)
+    let worktree_dir = dirs::home_dir()?.join(".claude").join("worktrees");
+    if worktree_dir.exists() {
+        let count = std::fs::read_dir(&worktree_dir)
+            .ok()?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_dir())
             .count();
         Some(count.to_string())
     } else {
