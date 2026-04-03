@@ -1136,10 +1136,11 @@ pub fn render_token_phase() -> Option<String> {
 ///
 /// Format: "+N"
 pub fn render_event_bus_count() -> Option<String> {
+    // Use hook_timing.jsonl — grows every tool call (live activity indicator)
     let path = dirs::home_dir()?
         .join(".claude")
         .join("data")
-        .join("event_bus.jsonl");
+        .join("hook_timing.jsonl");
 
     if let Ok(content) = std::fs::read_to_string(&path) {
         let count = content.lines().filter(|l| !l.trim().is_empty()).count();
