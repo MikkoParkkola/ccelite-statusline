@@ -1262,18 +1262,24 @@ pub fn render_active_agents() -> Option<String> {
 ///
 /// Format: "180+"
 pub fn render_tools_count() -> Option<String> {
-    // Count MCP server tools + CC built-in tools
+    // Read cached tool count (written by periodic-refresh or session-start)
+    let cache_path = dirs::home_dir()?.join(".claude").join("data").join("tool_count.txt");
+    if let Ok(content) = std::fs::read_to_string(&cache_path) {
+        let count = content.trim();
+        if !count.is_empty() && count != "0" {
+            return Some(count.to_string());
+        }
+    }
+    // Fallback: count MCP servers × gateway reported avg
     let mcp_path = dirs::home_dir()?.join(".claude").join("settings.json");
-    let mut tool_count: usize = 15; // CC built-in tools (Read, Write, Edit, Bash, Grep, Glob, Agent, etc.)
     if let Ok(content) = std::fs::read_to_string(&mcp_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object()) {
-                // Average ~5 tools per MCP server
-                tool_count += mcps.len() * 5;
+                return Some(format!("{}+", mcps.len() * 10));
             }
         }
     }
-    Some(format!("~{}", tool_count))
+    Some("?".to_string())
 }
 
 /// Render commits in the last 12 hours
