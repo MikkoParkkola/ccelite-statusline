@@ -3,6 +3,92 @@
 use crate::types::{Color, Settings, StatusInput, WidgetItem, BOLD, RESET};
 use crate::widgets::{preload_custom_commands, render_widget, RenderContext};
 
+/// Detect terminal width (columns). Returns None if undetectable.
+///
+/// Claude Code pipes stdin/stdout to the statusline command, so `isatty(1)` is
+/// false and `tput cols` returns the fallback 80. We therefore probe in order:
+///   1. `$COLUMNS` env var (if exported by the parent shell/harness)
+///   2. `ioctl(TIOCGWINSZ)` on `/dev/tty` (controlling terminal is inherited)
+///
+/// Without this, the renderer emits ~210-col powerline lines that wrap on any
+/// narrower terminal, causing Claude Code's fixed-height statusline area to
+/// clobber rows 2..N — producing the "only header visible" symptom.
+fn detect_terminal_width() -> Option<usize> {
+    // 1. $COLUMNS
+    if let Ok(cols) = std::env::var("COLUMNS") {
+        if let Ok(n) = cols.parse::<usize>() {
+            if n > 0 {
+                return Some(n);
+            }
+        }
+    }
+
+    // 2. ioctl(TIOCGWINSZ) on /dev/tty
+    unsafe {
+        #[repr(C)]
+        struct Winsize {
+            ws_row: libc::c_ushort,
+            ws_col: libc::c_ushort,
+            ws_xpixel: libc::c_ushort,
+            ws_ypixel: libc::c_ushort,
+        }
+
+        let path = b"/dev/tty\0".as_ptr() as *const libc::c_char;
+        let fd = libc::open(path, libc::O_RDONLY | libc::O_NOCTTY);
+        if fd < 0 {
+            return None;
+        }
+
+        let mut ws: Winsize = std::mem::zeroed();
+        let rc = libc::ioctl(fd, libc::TIOCGWINSZ, &mut ws as *mut Winsize);
+        libc::close(fd);
+
+        if rc == 0 && ws.ws_col > 0 {
+            return Some(ws.ws_col as usize);
+        }
+    }
+
+    None
+}
+
+/// Truncate a fully-rendered (ANSI-escaped) line to `max` visible columns.
+/// Appends RESET so background colors don't bleed past truncation point.
+/// Unlike `truncate_with_ansi`, this does NOT append "..." — the statusline
+/// already loses the right-side Feed column naturally when clipped.
+fn truncate_line_to_width(s: &str, max: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+
+    if strip_ansi_len(s) <= max {
+        return s.to_string();
+    }
+
+    let mut result = String::new();
+    let mut visible_len = 0;
+    let mut in_escape = false;
+
+    for c in s.chars() {
+        if c == '\x1b' {
+            in_escape = true;
+            result.push(c);
+        } else if in_escape {
+            result.push(c);
+            if c.is_ascii_alphabetic() {
+                in_escape = false;
+            }
+        } else {
+            let char_width = c.width().unwrap_or(0);
+            if visible_len + char_width > max {
+                break;
+            }
+            result.push(c);
+            visible_len += char_width;
+        }
+    }
+
+    result.push_str(RESET);
+    result
+}
+
 /// Pre-rendered widget with content and width
 struct PreRenderedWidget {
     content: String,
@@ -148,10 +234,18 @@ pub fn render_statusline(settings: &Settings, input: &StatusInput, input_json: &
     // Pre-render and calculate max widths
     let (pre_rendered_lines, max_widths) = pre_render_all(settings, &ctx);
 
+    // Detect terminal width for overflow protection. Without this, wide
+    // powerline layouts wrap and collide with Claude Code's input prompt.
+    let term_width = detect_terminal_width();
+
     // Render each line with alignment
     for (line_idx, pre_rendered) in pre_rendered_lines.iter().enumerate() {
         let widgets: Vec<&WidgetItem> = settings.lines[line_idx].iter().collect();
         let rendered = render_line_aligned(&widgets, pre_rendered, settings, &max_widths);
+        let rendered = match term_width {
+            Some(w) => truncate_line_to_width(&rendered, w),
+            None => rendered,
+        };
         print!("{}", rendered);
 
         if line_idx < pre_rendered_lines.len() - 1 {
@@ -372,5 +466,28 @@ mod tests {
     fn test_truncate_with_ansi() {
         assert_eq!(truncate_with_ansi("hello world", 5), "he...");
         assert_eq!(truncate_with_ansi("\x1b[31mhello\x1b[0m", 3), "\x1b[31m...");
+    }
+
+    #[test]
+    fn test_truncate_line_to_width_short() {
+        // No truncation needed
+        assert_eq!(truncate_line_to_width("abc", 10), "abc");
+    }
+
+    #[test]
+    fn test_truncate_line_to_width_plain() {
+        // Plain truncation, RESET appended
+        let out = truncate_line_to_width("abcdefgh", 3);
+        assert_eq!(out, format!("abc{}", RESET));
+    }
+
+    #[test]
+    fn test_truncate_line_to_width_preserves_escapes() {
+        // ANSI sequences before the cut point are preserved
+        let input = "\x1b[31mab\x1b[42mcdef\x1b[0m";
+        let out = truncate_line_to_width(input, 3);
+        // Should contain red fg, "ab", bg-green start, "c", reset
+        assert!(out.starts_with("\x1b[31mab\x1b[42mc"));
+        assert!(out.ends_with(RESET));
     }
 }
