@@ -109,7 +109,7 @@ fn load_feed() -> FeedData {
 /// the backing file has been updated.
 fn try_cache_hit() -> Option<FeedData> {
     let guard = FEED_CACHE.read().ok()?;
-    let (cached_mtime, ref data) = guard.as_ref()?;
+    let (cached_mtime, data) = guard.as_ref()?;
     let current_mtime = best_source_mtime()?;
     if current_mtime == *cached_mtime {
         Some(data.clone())
