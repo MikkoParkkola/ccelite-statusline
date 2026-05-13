@@ -117,7 +117,10 @@ pub fn render_session_cost_elite(input: &StatusInput) -> Option<String> {
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             let file_cost = json.get("cost_usd").and_then(|c| c.as_f64()).unwrap_or(0.0);
-            let cache_hit_pct = json.get("cache_hit_pct").and_then(|c| c.as_f64()).unwrap_or(0.0);
+            let cache_hit_pct = json
+                .get("cache_hit_pct")
+                .and_then(|c| c.as_f64())
+                .unwrap_or(0.0);
 
             // Use live cost when available (more accurate), fall back to file cost
             let cost_usd = live_cost.unwrap_or(file_cost);
@@ -406,9 +409,7 @@ pub fn render_disk_free() -> Option<String> {
 /// Render MCP server count
 pub fn render_mcp_count() -> Option<String> {
     // Count MCP servers from settings
-    let mcp_path = dirs::home_dir()?
-        .join(".claude")
-        .join("settings.json");
+    let mcp_path = dirs::home_dir()?.join(".claude").join("settings.json");
 
     if let Ok(content) = std::fs::read_to_string(&mcp_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -691,14 +692,22 @@ pub fn render_alert() -> Option<String> {
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             // Check 5-hour quota
-            if let Some(five_hr) = json.get("five_hour").and_then(|f| f.get("utilization")).and_then(|u| u.as_f64()) {
+            if let Some(five_hr) = json
+                .get("five_hour")
+                .and_then(|f| f.get("utilization"))
+                .and_then(|u| u.as_f64())
+            {
                 if five_hr > 80.0 {
                     alerts.push("5h!");
                 }
             }
 
             // Check 7-day quota
-            if let Some(seven_day) = json.get("seven_day").and_then(|f| f.get("utilization")).and_then(|u| u.as_f64()) {
+            if let Some(seven_day) = json
+                .get("seven_day")
+                .and_then(|f| f.get("utilization"))
+                .and_then(|u| u.as_f64())
+            {
                 if seven_day > 90.0 {
                     alerts.push("7d!");
                 }
@@ -850,7 +859,10 @@ pub fn render_lint_errors() -> Option<String> {
         if let Some(cq) = json.get("code_quality") {
             let ruff = cq.get("ruff_errors").and_then(|v| v.as_u64()).unwrap_or(0);
             let mypy = cq.get("mypy_errors").and_then(|v| v.as_u64()).unwrap_or(0);
-            let bandit = cq.get("bandit_issues").and_then(|v| v.as_u64()).unwrap_or(0);
+            let bandit = cq
+                .get("bandit_issues")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             return Some((ruff + mypy + bandit).to_string());
         }
     }
@@ -915,7 +927,8 @@ fn format_reset_ttl(ttr: &serde_json::Value) -> Option<String> {
 
 /// Extract TTL from a quota section in usage_cache.json.
 fn quota_ttl(cache: &Option<serde_json::Value>, section: &str) -> Option<String> {
-    cache.as_ref()
+    cache
+        .as_ref()
         .and_then(|j| j.get(section))
         .and_then(|f| f.get("time_to_reset"))
         .and_then(format_reset_ttl)
@@ -932,7 +945,8 @@ pub fn render_session_quota(input: &StatusInput) -> Option<String> {
         .as_ref()
         .and_then(|u| u.five_hour_utilization)
         .or_else(|| {
-            cache.as_ref()
+            cache
+                .as_ref()
                 .and_then(|j| j.get("five_hour"))
                 .and_then(|f| f.get("utilization"))
                 .and_then(|u| u.as_f64())
@@ -955,7 +969,8 @@ pub fn render_weekly_quota(input: &StatusInput) -> Option<String> {
         .as_ref()
         .and_then(|u| u.seven_day_utilization)
         .or_else(|| {
-            cache.as_ref()
+            cache
+                .as_ref()
                 .and_then(|j| j.get("seven_day"))
                 .and_then(|f| f.get("utilization"))
                 .and_then(|u| u.as_f64())
@@ -1023,10 +1038,7 @@ pub fn render_bugs_clarity() -> Option<String> {
     if let Ok(content) = std::fs::read_to_string(&quality_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             let bugs = json.get("bug_count").and_then(|b| b.as_u64()).unwrap_or(0);
-            let grade = json
-                .get("grade")
-                .and_then(|g| g.as_str())
-                .unwrap_or("—");
+            let grade = json.get("grade").and_then(|g| g.as_str()).unwrap_or("—");
             return Some(format!("{} {}", bugs, grade));
         }
     }
@@ -1043,16 +1055,19 @@ pub fn render_bugs_clarity() -> Option<String> {
 /// Format: "0.67×", "⚠1.8×"
 pub fn render_burn_rate_clarity(_input: &StatusInput) -> Option<String> {
     if let Some(cache) = read_usage_cache() {
-        let util = cache.get("five_hour")
+        let util = cache
+            .get("five_hour")
             .and_then(|f| f.get("utilization"))
             .and_then(|u| u.as_f64())
             .unwrap_or(0.0);
-        let hours = cache.get("five_hour")
+        let hours = cache
+            .get("five_hour")
             .and_then(|f| f.get("time_to_reset"))
             .and_then(|t| t.get("hours"))
             .and_then(|h| h.as_f64())
             .unwrap_or(5.0);
-        let mins = cache.get("five_hour")
+        let mins = cache
+            .get("five_hour")
             .and_then(|f| f.get("time_to_reset"))
             .and_then(|t| t.get("minutes"))
             .and_then(|m| m.as_f64())
@@ -1173,8 +1188,7 @@ pub fn render_recent_fails() -> Option<String> {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
                     // Try "timestamp" (epoch seconds or ISO string)
                     if let Some(ts) = json.get("timestamp").or_else(|| json.get("ts")) {
-                        if let Some(epoch) = ts.as_u64().or_else(|| ts.as_f64().map(|f| f as u64))
-                        {
+                        if let Some(epoch) = ts.as_u64().or_else(|| ts.as_f64().map(|f| f as u64)) {
                             return epoch >= one_hour_ago;
                         }
                         // ISO string fallback
@@ -1263,7 +1277,10 @@ pub fn render_active_agents() -> Option<String> {
 /// Format: "180+"
 pub fn render_tools_count() -> Option<String> {
     // Read cached tool count (written by periodic-refresh or session-start)
-    let cache_path = dirs::home_dir()?.join(".claude").join("data").join("tool_count.txt");
+    let cache_path = dirs::home_dir()?
+        .join(".claude")
+        .join("data")
+        .join("tool_count.txt");
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         let count = content.trim();
         if !count.is_empty() && count != "0" {
@@ -1305,21 +1322,31 @@ pub fn render_saved_per_session() -> Option<String> {
     // Calculate from compact_quality.json (real compaction savings)
     // plus estimated token savings from rules optimization
     let quality_path = dirs::home_dir()?
-        .join(".claude").join("data").join("compact_quality.json");
+        .join(".claude")
+        .join("data")
+        .join("compact_quality.json");
     let mut saved_dollars = 0.0_f64;
     if let Ok(content) = std::fs::read_to_string(&quality_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let chars = json.get("char_count").and_then(|c| c.as_f64()).unwrap_or(0.0);
+            let chars = json
+                .get("char_count")
+                .and_then(|c| c.as_f64())
+                .unwrap_or(0.0);
             // Estimate: compression saved ~50% of what would have been
             saved_dollars += (chars / 4.0) * 0.000003; // tokens * $0.003/1K
         }
     }
     // Base savings from rules-source→skills optimization (~95K tok/turn × turns × $0.003/1K)
     let phase_path = dirs::home_dir()?
-        .join(".claude").join("data").join("token_phase.json");
+        .join(".claude")
+        .join("data")
+        .join("token_phase.json");
     if let Ok(content) = std::fs::read_to_string(&phase_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let calls = json.get("tool_calls").and_then(|c| c.as_f64()).unwrap_or(0.0);
+            let calls = json
+                .get("tool_calls")
+                .and_then(|c| c.as_f64())
+                .unwrap_or(0.0);
             // ~95K tokens saved per turn from rules optimization
             saved_dollars += calls * 95.0 * 0.003; // turns × 95K tok × $0.003/1K
         }
@@ -1370,7 +1397,11 @@ pub fn render_rate_status() -> Option<String> {
                 return Some(status.to_string());
             }
             // Fallback: show 5hr utilization as status
-            if let Some(five_hr) = json.get("five_hour").and_then(|f| f.get("utilization")).and_then(|u| u.as_f64()) {
+            if let Some(five_hr) = json
+                .get("five_hour")
+                .and_then(|f| f.get("utilization"))
+                .and_then(|u| u.as_f64())
+            {
                 return Some(format!("S:{:.0}%", five_hr));
             }
         }

@@ -112,10 +112,18 @@ pub struct Settings {
     pub powerline: Option<PowerlineSettings>,
 }
 
-fn default_flex_mode() -> String { "full".to_string() }
-fn default_compact_threshold() -> u32 { 60 }
-fn default_color_level() -> u32 { 3 }
-fn default_padding() -> String { " ".to_string() }
+fn default_flex_mode() -> String {
+    "full".to_string()
+}
+fn default_compact_threshold() -> u32 {
+    60
+}
+fn default_color_level() -> u32 {
+    3
+}
+fn default_padding() -> String {
+    " ".to_string()
+}
 
 #[derive(Debug, Deserialize, Default)]
 pub struct PowerlineSettings {
@@ -214,7 +222,7 @@ impl Color {
                 "brightCyan" => "\x1b[96m".to_string(),
                 "brightWhite" => "\x1b[97m".to_string(),
                 _ => "\x1b[39m".to_string(),
-            }
+            },
         }
     }
 
@@ -232,7 +240,7 @@ impl Color {
                 "cyan" => "\x1b[46m".to_string(),
                 "white" => "\x1b[47m".to_string(),
                 _ => "\x1b[49m".to_string(),
-            }
+            },
         }
     }
 }

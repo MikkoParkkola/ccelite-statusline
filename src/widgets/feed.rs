@@ -204,7 +204,11 @@ fn parse_feed_items(json: &serde_json::Value) -> Option<FeedData> {
 /// The `_global_cutoff` parameter (derived from `MAX_ITEM_AGE_SECS`) is the
 /// floor: a per-item `ttl_seconds` field may impose a shorter deadline.
 fn parse_single_item(v: &serde_json::Value, _global_cutoff: DateTime<Utc>) -> Option<FeedEntry> {
-    let text = v.get("text").and_then(|t| t.as_str()).unwrap_or("").to_string();
+    let text = v
+        .get("text")
+        .and_then(|t| t.as_str())
+        .unwrap_or("")
+        .to_string();
     if text.is_empty() {
         return None;
     }
@@ -226,7 +230,11 @@ fn parse_single_item(v: &serde_json::Value, _global_cutoff: DateTime<Utc>) -> Op
         return None;
     }
 
-    let icon = v.get("icon").and_then(|i| i.as_str()).unwrap_or("").to_string();
+    let icon = v
+        .get("icon")
+        .and_then(|i| i.as_str())
+        .unwrap_or("")
+        .to_string();
     let priority = derive_priority(v);
     let source = v
         .get("source")
@@ -306,7 +314,10 @@ fn format_display_time(entry: &FeedEntry, tz: &Tz) -> String {
 }
 
 fn format_text_with_relative(entry: &FeedEntry) -> String {
-    let relative = entry.timestamp.map(format_relative_time).unwrap_or_default();
+    let relative = entry
+        .timestamp
+        .map(format_relative_time)
+        .unwrap_or_default();
     if relative.is_empty() {
         entry.text.clone()
     } else {
@@ -654,8 +665,14 @@ mod tests {
     fn format_relative_time_future_minutes() {
         let dt = chrono::Utc::now() + chrono::Duration::minutes(5);
         let result = format_relative_time(dt);
-        assert!(result.starts_with("in "), "expected future indicator, got '{result}'");
-        assert!(result.chars().any(|c| c.is_ascii_digit()), "expected time value in '{result}'");
+        assert!(
+            result.starts_with("in "),
+            "expected future indicator, got '{result}'"
+        );
+        assert!(
+            result.chars().any(|c| c.is_ascii_digit()),
+            "expected time value in '{result}'"
+        );
     }
 
     #[test]
