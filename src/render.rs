@@ -1,7 +1,7 @@
 //! Rendering logic for statusline output
 
-use crate::types::{Color, Settings, StatusInput, WidgetItem, BOLD, RESET};
-use crate::widgets::{preload_custom_commands, render_widget, RenderContext};
+use crate::types::{BOLD, Color, RESET, Settings, StatusInput, WidgetItem};
+use crate::widgets::{RenderContext, preload_custom_commands, render_widget};
 
 /// Detect terminal width (columns). Returns None if undetectable.
 ///
@@ -290,9 +290,7 @@ fn render_line_aligned(
 
         // Find all widgets merged with this one
         let mut merge_end = i;
-        while merge_end < filtered.len() - 1
-            && filtered[merge_end].1.widget.merge.is_some()
-        {
+        while merge_end < filtered.len() - 1 && filtered[merge_end].1.widget.merge.is_some() {
             merge_end += 1;
         }
 
@@ -303,13 +301,23 @@ fn render_line_aligned(
 
             // Get colors
             let fg: Option<Color> = w.widget.color.as_ref().and_then(|c| Color::parse(c));
-            let bg: Option<Color> = w.widget.background_color.as_ref().and_then(|c| Color::parse(c));
+            let bg: Option<Color> = w
+                .widget
+                .background_color
+                .as_ref()
+                .and_then(|c| Color::parse(c));
 
             // Powerline transition - only at start of merged group (k == i)
             // Separators are drawn between groups, not between merged widgets
             // NOTE: Separator width is NOT counted in group_width because it's
             // extra space between columns, not part of the column itself
-            if k == i && settings.powerline.as_ref().map(|p| p.enabled).unwrap_or(false) {
+            if k == i
+                && settings
+                    .powerline
+                    .as_ref()
+                    .map(|p| p.enabled)
+                    .unwrap_or(false)
+            {
                 if let Some(ref prev) = prev_bg {
                     if let Some(ref current_bg) = bg {
                         let sep = settings

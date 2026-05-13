@@ -2,8 +2,8 @@
 
 use std::io::Write;
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 /// Execute a custom command with the given input JSON
 ///
@@ -61,7 +61,11 @@ pub fn execute_custom_commands(
                     if !preserve_colors {
                         result = strip_ansi_codes(&result);
                     }
-                    return if result.is_empty() { None } else { Some(result) };
+                    return if result.is_empty() {
+                        None
+                    } else {
+                        Some(result)
+                    };
                 } else {
                     return None;
                 }

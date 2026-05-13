@@ -91,10 +91,7 @@ pub fn render_widget(item: &WidgetItem, ctx: &RenderContext) -> Option<String> {
 }
 
 /// Pre-execute all custom commands in parallel
-pub fn preload_custom_commands(
-    items: &[WidgetItem],
-    input_json: &str,
-) -> HashMap<String, String> {
+pub fn preload_custom_commands(items: &[WidgetItem], input_json: &str) -> HashMap<String, String> {
     // Collect all custom-command widgets
     let custom_commands: Vec<_> = items
         .iter()

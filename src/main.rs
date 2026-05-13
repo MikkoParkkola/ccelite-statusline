@@ -43,18 +43,20 @@ fn main() -> Result<()> {
             Ok(0) | Err(_) => "{}".to_string(),
             Ok(_) => {
                 let trimmed = line.trim();
-                if trimmed.is_empty() { "{}".to_string() } else { trimmed.to_string() }
+                if trimmed.is_empty() {
+                    "{}".to_string()
+                } else {
+                    trimmed.to_string()
+                }
             }
         }
     };
 
     // Parse input JSON
-    let input: types::StatusInput = serde_json::from_str(&input_json)
-        .unwrap_or_default();
+    let input: types::StatusInput = serde_json::from_str(&input_json).unwrap_or_default();
 
     // Load settings
-    let settings = config::load_settings()
-        .context("Failed to load settings")?;
+    let settings = config::load_settings().context("Failed to load settings")?;
 
     // Render the statusline
     render::render_statusline(&settings, &input, &input_json);

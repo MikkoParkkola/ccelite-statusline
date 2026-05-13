@@ -1,0 +1,12 @@
+# Pin rationale: keep ccelite-statusline reproducible on the portfolio Rust
+# baseline used by sibling production repos and tracked in MIK-3181 /
+# GitHub ccelite-statusline#1.
+# Renewal cadence: review quarterly or whenever the portfolio Rust baseline
+# moves after a successful cross-repo build/test/clippy pass.
+# Bump history:
+# - 2026-05-13: pinned to Rust 1.95.0 as the initial ccelite-statusline baseline.
+
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
