@@ -47,3 +47,24 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets
+
+  # Dependency-vulnerability gate. This repo ships no release/publish workflow,
+  # so this CI job IS the security gate: it fails the build on ANY known,
+  # fixable vuln in the dependency tree. `--recursive ./` scans BOTH lockfiles —
+  # ./Cargo.lock (the active Rust crate) AND ./legacy/ts/bun.lock (the legacy TS
+  # tree, still externally published to npm as `ccstatusline`). Accepted/
+  # unfixable vulns are time-boxed in .github/osv-scanner.toml (kept empty: the
+  # fix for a fixable vuln is to bump the dep, not to ignore it). No Dockerfile,
+  # so no trivy image scan is warranted.
+  osv-scan:
+    name: OSV vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan dependencies against OSV
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --config=.github/osv-scanner.toml
+            --recursive
+            ./
