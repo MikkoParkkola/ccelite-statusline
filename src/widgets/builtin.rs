@@ -453,12 +453,14 @@ pub fn render_tokens_cached(_input: &StatusInput) -> Option<String> {
 
     if let Ok(content) = std::fs::read_to_string(&telemetry_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Get daemon_cache_hit_rate from elite_value (most accurate)
-            if let Some(hit_rate) = json
-                .get("elite_value")
-                .and_then(|ev| ev.get("daemon_cache_hit_rate"))
-                .and_then(|r| r.as_f64())
-            {
+            // Get daemon_cache_hit_rate from elite_value (most accurate).
+            // eis_daemon serialises the same number as cache_hit_rate_pct; the
+            // older key is kept first so a hand-written cache still wins.
+            if let Some(hit_rate) = json.get("elite_value").and_then(|ev| {
+                ev.get("daemon_cache_hit_rate")
+                    .or_else(|| ev.get("cache_hit_rate_pct"))
+                    .and_then(serde_json::Value::as_f64)
+            }) {
                 return Some(format!("{:.0}%", hit_rate));
             }
 
