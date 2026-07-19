@@ -379,6 +379,23 @@ fn extract_number(line: &str) -> Option<u64> {
 /// Render free disk space on the main volume.
 ///
 /// Format: "92G", "1.2T", "450M"
+/// One-minute load average.
+///
+/// The `load-average` type used to be aliased to `render_disk_free`, so a cell
+/// labelled "Load:" reported free disk space — 253G where a load figure belongs.
+pub fn render_load_average() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut loads = [0f64; 3];
+        let count = unsafe { libc::getloadavg(loads.as_mut_ptr(), 3) };
+        if count > 0 {
+            return Some(format!("{:.2}", loads[0]));
+        }
+    }
+
+    None
+}
+
 pub fn render_disk_free() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
@@ -437,11 +454,9 @@ pub fn render_project_name(input: &StatusInput) -> Option<String> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| dir.clone());
 
-    if name.len() > 20 {
-        Some(format!("{}...", &name[..17]))
-    } else {
-        Some(name)
-    }
+    // Width is a layout concern: render.rs applies the cell's maxWidth. Clipping
+    // here fought the config and sliced by byte, which panics mid-codepoint.
+    Some(name)
 }
 
 /// Render cache hit rate percentage from elite_telemetry_cache.json (official source)
@@ -1116,11 +1131,10 @@ pub fn render_project_elite(input: &StatusInput) -> Option<String> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| dir.clone());
 
-    if name.len() > 10 {
-        Some(format!("{}…", &name[..9]))
-    } else {
-        Some(name)
-    }
+    // No truncation here: render.rs already honours the cell's maxWidth, and a
+    // hardcoded 10 clipped "claude-elite" to "claude-el…" in a column with room
+    // to spare. Slicing by byte also panics on a multi-byte boundary.
+    Some(name)
 }
 
 /// Render token phase from ~/.claude/data/token_phase.json
