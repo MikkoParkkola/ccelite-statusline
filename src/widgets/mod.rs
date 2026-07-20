@@ -39,7 +39,8 @@ pub fn render_widget(item: &WidgetItem, ctx: &RenderContext) -> Option<String> {
         "git-changes" => render_git_changes(),
         "cpu" => render_cpu(),
         "memory-percent" => render_memory_percent(),
-        "disk-free" | "load-average" => render_disk_free(),
+        "disk-free" => render_disk_free(),
+        "load-average" => render_load_average(),
         "mcp-count" => render_mcp_count(),
         "hooks-status" => render_hooks_status(),
         "project-name" => render_project_name(ctx.input),
@@ -79,6 +80,15 @@ pub fn render_widget(item: &WidgetItem, ctx: &RenderContext) -> Option<String> {
         "burn-rate-clarity" => render_burn_rate_clarity(ctx.input),
         "project-elite" => render_project_elite(ctx.input),
         // Aliases: config names → existing implementations
+        // Unknown types fall through to the "[name]" placeholder below, which is
+        // indistinguishable from a widget that has no data — these five shipped
+        // in configs/ but never had a match arm, so five cells rendered their own
+        // type name in production.
+        "session-npv-elite" => render_session_npv(ctx.input),
+        "session-roi" => render_roi(ctx.input),
+        "tokens-saved" => render_codex_tokens_saved(),
+        "cache-hit" => render_tokens_cached(ctx.input),
+        "context-prediction" => render_turns(),
         "first-try-success" => render_first_try_rate(),
         "test-pass-rate" => render_tests_percentage(),
         "alert-detail" => render_alert(),
@@ -121,4 +131,117 @@ pub fn preload_custom_commands(items: &[WidgetItem], input_json: &str) -> HashMa
         .into_iter()
         .filter_map(|(id, result)| result.map(|r| (id, r)))
         .collect()
+}
+
+#[cfg(test)]
+mod dispatch_tests {
+    use super::*;
+
+    /// Widget types that appear in a shipped config but have no match arm, so
+    /// they render their own name in brackets instead of a value. Shrinking this
+    /// list is the point; growing it silently is the bug this test prevents.
+    const UNIMPLEMENTED: &[&str] = &[
+        "annual-roi",
+        "block-timer",
+        "cache-hit-rate",
+        "codex-routed",
+        "codex-savings",
+        "context-length",
+        "disk-space",
+        "git-worktree",
+        "hooks-count",
+        "learning-patterns",
+        "security-score",
+        "tech-debt",
+        "tokens-input",
+        "tokens-output",
+    ];
+
+    fn widget(widget_type: &str) -> WidgetItem {
+        serde_json::from_str(&format!(r#"{{"type":"{widget_type}"}}"#)).expect("widget json")
+    }
+
+    fn config_widget_types() -> Vec<String> {
+        let mut types = Vec::new();
+        for entry in std::fs::read_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/configs")).unwrap() {
+            let path = entry.unwrap().path();
+            // A stray .DS_Store or README must not panic the test before it can
+            // report which widget types are missing.
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let json: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            collect_types(&json, &mut types);
+        }
+        types.sort();
+        types.dedup();
+        types
+    }
+
+    fn collect_types(value: &serde_json::Value, out: &mut Vec<String>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                if let Some(serde_json::Value::String(t)) = map.get("type") {
+                    out.push(t.clone());
+                }
+                map.values().for_each(|v| collect_types(v, out));
+            }
+            serde_json::Value::Array(items) => items.iter().for_each(|v| collect_types(v, out)),
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn shipped_config_widget_types_have_implementations() {
+        let input = StatusInput::default();
+        let custom_results = HashMap::new();
+        let ctx = RenderContext {
+            input: &input,
+            input_json: "{}",
+            custom_results: &custom_results,
+        };
+
+        let mut placeholders = Vec::new();
+        for widget_type in config_widget_types() {
+            if UNIMPLEMENTED.contains(&widget_type.as_str()) {
+                continue;
+            }
+            let rendered = render_widget(&widget(&widget_type), &ctx);
+            if rendered.as_deref() == Some(format!("[{widget_type}]").as_str()) {
+                placeholders.push(widget_type);
+            }
+        }
+
+        assert!(
+            placeholders.is_empty(),
+            "widget types render as placeholders: {placeholders:?}"
+        );
+    }
+
+    #[test]
+    fn recovered_aliases_render_values_not_placeholders() {
+        let input = StatusInput::default();
+        let custom_results = HashMap::new();
+        let ctx = RenderContext {
+            input: &input,
+            input_json: "{}",
+            custom_results: &custom_results,
+        };
+
+        for widget_type in [
+            "session-npv-elite",
+            "session-roi",
+            "tokens-saved",
+            "cache-hit",
+            "context-prediction",
+        ] {
+            let rendered = render_widget(&widget(widget_type), &ctx);
+            assert_ne!(
+                rendered.as_deref(),
+                Some(format!("[{widget_type}]").as_str()),
+                "{widget_type} still falls through to the placeholder arm"
+            );
+        }
+    }
 }
