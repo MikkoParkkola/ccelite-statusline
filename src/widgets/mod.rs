@@ -165,6 +165,11 @@ mod dispatch_tests {
         let mut types = Vec::new();
         for entry in std::fs::read_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/configs")).unwrap() {
             let path = entry.unwrap().path();
+            // A stray .DS_Store or README must not panic the test before it can
+            // report which widget types are missing.
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
             let json: serde_json::Value =
                 serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
             collect_types(&json, &mut types);

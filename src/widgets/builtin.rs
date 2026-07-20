@@ -513,12 +513,27 @@ fn read_telemetry() -> Option<serde_json::Value> {
     serde_json::from_str(&content).ok()
 }
 
+/// Code quality section of the telemetry cache, but only when it was measured.
+///
+/// eis_daemon refreshes the cache every 60s while ruff/mypy/bandit/pytest run far
+/// less often, so the section can be all zeros because nothing ran — which reads
+/// as a perfectly clean repo. `measured_at` is the difference between "clean" and
+/// "unknown"; without it these cells report a green they cannot support.
+fn measured_code_quality(json: &serde_json::Value) -> Option<&serde_json::Value> {
+    let cq = json.get("code_quality")?;
+    cq.get("measured_at").and_then(|v| v.as_str())?;
+    Some(cq)
+}
+
 /// Render tests - shows ONLY pass rate from elite_telemetry_cache.json
 /// Coverage is shown separately in the Cov widget
 pub fn render_tests_percentage() -> Option<String> {
-    let json = read_telemetry()?;
-    let cq = json.get("code_quality")?;
-    if let Some(pass_rate) = cq.get("test_pass_rate_pct").and_then(|r| r.as_f64()) {
+    let json = read_telemetry();
+    let measured = json.as_ref().and_then(measured_code_quality);
+    if let Some(pass_rate) = measured
+        .and_then(|cq| cq.get("test_pass_rate_pct"))
+        .and_then(|r| r.as_f64())
+    {
         return Some(format!("{:.0}%", pass_rate));
     }
     Some("—".to_string())
@@ -526,9 +541,12 @@ pub fn render_tests_percentage() -> Option<String> {
 
 /// Render test coverage percentage (Cov widget — parity with statusline-qual.sh).
 pub fn render_coverage() -> Option<String> {
-    let json = read_telemetry()?;
-    let cq = json.get("code_quality")?;
-    if let Some(cov) = cq.get("test_coverage_pct").and_then(|r| r.as_f64()) {
+    let json = read_telemetry();
+    let cq = json.as_ref().and_then(measured_code_quality);
+    if let Some(cov) = cq
+        .and_then(|cq| cq.get("test_coverage_pct"))
+        .and_then(|r| r.as_f64())
+    {
         if cov > 0.0 {
             return Some(format!("{:.0}%", cov));
         }
@@ -873,7 +891,7 @@ pub fn render_first_try_rate() -> Option<String> {
 pub fn render_lint_errors() -> Option<String> {
     // Primary: telemetry cache (has ruff+mypy+bandit breakdown)
     if let Some(json) = read_telemetry() {
-        if let Some(cq) = json.get("code_quality") {
+        if let Some(cq) = measured_code_quality(&json) {
             let ruff = cq.get("ruff_errors").and_then(|v| v.as_u64()).unwrap_or(0);
             let mypy = cq.get("mypy_errors").and_then(|v| v.as_u64()).unwrap_or(0);
             let bandit = cq
@@ -897,7 +915,9 @@ pub fn render_lint_errors() -> Option<String> {
         }
     }
 
-    Some("0".to_string())
+    // Neither telemetry nor the lint cache holds a measurement, so "0" here would
+    // be a green nobody earned.
+    Some("—".to_string())
 }
 
 /// Helper: read usage_cache.json once (both quota widgets share it).
