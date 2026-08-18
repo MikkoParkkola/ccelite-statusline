@@ -1,148 +1,84 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
 
-## Project Overview
+## Project overview
 
-ccstatusline is a customizable status line formatter for Claude Code CLI that displays model info, git branch, token usage, and other metrics. It functions as both:
-1. A piped command processor for Claude Code status lines
-2. An interactive TUI configuration tool when run without input
+A status line renderer for the Claude Code CLI, written in Rust. It reads one
+line of JSON from standard input, prints one or more rendered lines, and exits
+(`src/main.rs:19-65`). There is no interactive configuration mode, no npm
+package and no TypeScript entry point; the settings file is edited by hand.
 
-## Development Commands
+The repository began as a fork of sirmalloc/ccstatusline and keeps that
+project's settings file shape and some widget names. A few orphaned `.ts` files
+still sit under `src/widgets/` and `scripts/`; nothing builds them, and there is
+no `package.json`.
+
+## Commands
 
 ```bash
-# Install dependencies
-bun install
+cargo build --release            # target/release/ccstatusline
+cargo test --all-targets
+cargo clippy --all-targets
+cargo fmt --all -- --check
 
-# Run in interactive TUI mode
-bun run start
+./install.sh                     # build, copy to ~/.claude/bin/ccstatusline-rs
+./install.sh --smoke             # same, plus one render from a test payload
 
-# Test with piped input (use [1m] suffix for 1M context models)
-echo '{"model":{"id":"claude-sonnet-4-5-20250929[1m]"},"transcript_path":"test.jsonl"}' | bun run src/ccstatusline.ts
-
-# Or use example payload
-bun run example
-
-# Build for npm distribution
-bun run build   # Creates dist/ccstatusline.js with Node.js 14+ compatibility
-
-# Run tests
-bun test
-
-# Run tests in watch mode
-bun test --watch
-
-# Lint and type check
-bun run lint   # Runs TypeScript type checking and ESLint with auto-fix
+echo '{"model":{"id":"claude-sonnet-4-5[1m]"}}' | ./target/release/ccstatusline
 ```
+
+The toolchain is pinned to 1.95.0 in `rust-toolchain.toml`. CI runs check, test,
+fmt, clippy and an OSV dependency scan (`.github/workflows/ci.yml`).
+
+Deployment matters: the Claude Code wrapper runs
+`~/.claude/bin/ccstatusline-rs`, and `target/` is periodically deleted, so a
+build that is never copied by `install.sh` leaves the old binary live with no
+error (`install.sh:1-20`).
 
 ## Architecture
 
-The project has dual runtime compatibility - works with both Bun and Node.js:
+- **src/main.rs** reads at most one line from standard input, without blocking
+  when the pipe is empty, and falls back to `{}`. Then it loads settings and
+  renders once.
+- **src/config.rs** reads `~/.config/ccstatusline/settings.json`, or returns
+  defaults when the file is absent. Nothing is ever written.
+- **src/types.rs** holds the input schema from Claude Code, the settings schema
+  and colour parsing (named colours and `hex:RRGGBB`; the 256-colour variant
+  exists but `Color::parse` never produces it).
+- **src/render.rs** pre-renders every widget, lines up merge groups by column,
+  applies powerline separators between colour groups, and clips each line to the
+  detected terminal width (`$COLUMNS`, then `ioctl` on `/dev/tty`).
+- **src/widgets/mod.rs** maps the `type` string to a renderer and pre-executes
+  `custom-command` widgets in parallel with rayon.
+- **src/widgets/builtin.rs** holds the built-in renderers.
+- **src/widgets/feed.rs** holds the `feed` widget and its mtime-keyed cache.
 
-### Core Structure
-- **src/ccstatusline.ts**: Main entry point that detects piped vs interactive mode
-  - Piped mode: Parses JSON from stdin and renders formatted status line
-  - Interactive mode: Launches React/Ink TUI for configuration
+## Things worth knowing before editing
 
-### TUI Components (src/tui/)
-- **index.tsx**: Main TUI entry point that handles React/Ink initialization
-- **App.tsx**: Root component managing navigation and state
-- **components/**: Modular UI components for different configuration screens
-  - MainMenu, LineSelector, ItemsEditor, ColorMenu, GlobalOverridesMenu
-  - PowerlineSetup, TerminalOptionsMenu, StatusLinePreview
+- **Unknown widget types render as `[type]`**, which looks the same as a widget
+  with no data. Five widgets shipped that way in production. `UNIMPLEMENTED` in
+  `src/widgets/mod.rs` lists the known gaps, and a test fails when a shipped
+  config gains a type outside that list.
+- **Several settings keys parse but are dead**: `flexMode`, `compactThreshold`,
+  `colorLevel`, `defaultSeparator`, `inheritSeparatorColors`, per-widget
+  `padding`, and every `powerline` field except `enabled` and `separators[0]`.
+  Widgets of type `separator` and `flex-separator` are filtered out before
+  rendering. Do not document them as working; wire them up or leave them alone.
+- **Widgets read the live machine.** They open files under `~/.claude/data/`,
+  `~/.claude/settings.json` and `~/.claude.json`; run `git`, and on macOS `ps`
+  and `vm_stat`; call `statvfs` and `getloadavg`; and open a 50 ms TCP
+  connection to `127.0.0.1:8000` for `db-health`. A missing source yields a
+  placeholder rather than an error, so a broken path is quiet.
+- **The machine widgets are macOS-only.** `cpu`, `memory-percent`, `disk-free`
+  and `load-average` are behind `#[cfg(target_os = "macos")]` and render `?` or
+  nothing elsewhere.
+- **Custom commands are arbitrary code** run with the Claude Code payload on
+  standard input and killed after `timeout` milliseconds (default 1000).
+- **Width is a layout concern.** Clip in `render.rs` using the widget's
+  `maxWidth`, not inside a widget by slicing bytes, which panics mid-codepoint.
 
-### Utilities (src/utils/)
-- **config.ts**: Settings management
-  - Loads from `~/.config/ccstatusline/settings.json`
-  - Handles migration from old settings format
-  - Default configuration if no settings exist
-- **renderer.ts**: Core rendering logic for status lines
-  - Handles terminal width detection and truncation
-  - Applies colors, padding, and separators
-  - Manages flex separator expansion
-- **powerline.ts**: Powerline font detection and installation
-- **claude-settings.ts**: Integration with Claude Code settings.json
-  - Respects `CLAUDE_CONFIG_DIR` environment variable with fallback to `~/.claude`
-  - Provides installation command constants (NPM, BUNX, self-managed)
-  - Detects installation status and manages settings.json updates
-  - Validates config directory paths with proper error handling
-- **colors.ts**: Color definitions and ANSI code mapping
-- **model-context.ts**: Model-to-context-window mapping
-  - Maps model IDs to their context window sizes based on [1m] suffix
-  - Sonnet 4.5 WITH [1m] suffix: 1M tokens (800k usable at 80%) - requires long context beta access
-  - Sonnet 4.5 WITHOUT [1m] suffix: 200k tokens (160k usable at 80%)
-  - Legacy models: 200k tokens (160k usable at 80%)
+## License
 
-### Widgets (src/widgets/)
-Custom widgets implementing the Widget interface defined in src/types/Widget.ts:
-
-**Widget Interface:**
-All widgets must implement:
-- `getDefaultColor()`: Default color for the widget
-- `getDescription()`: Description shown in TUI
-- `getDisplayName()`: Display name shown in TUI
-- `getEditorDisplay()`: How the widget appears in the editor
-- `render()`: Core rendering logic that produces the widget output
-- `supportsRawValue()`: Whether widget supports raw value mode
-- `supportsColors()`: Whether widget supports color customization
-- Optional: `renderEditor()`, `getCustomKeybinds()`, `handleEditorAction()`
-
-**Widget Registry Pattern:**
-- Located in src/utils/widgets.ts
-- Uses a Map-based registry (`widgetRegistry`) that maps widget type strings to widget instances
-- `getWidget(type)`: Retrieves widget instance by type
-- `getAllWidgetTypes()`: Returns all available widget types
-- `isKnownWidgetType()`: Validates if a type is registered
-
-**Available Widgets:**
-- Model, Version, OutputStyle - Claude Code metadata display
-- GitBranch, GitChanges, GitWorktree - Git repository status
-- TokensInput, TokensOutput, TokensCached, TokensTotal - Token usage metrics
-- ContextLength, ContextPercentage, ContextPercentageUsable - Context window metrics (uses dynamic model-based context windows: 1M for Sonnet 4.5 with [1m] suffix, 200k for all other models)
-- BlockTimer, SessionClock, SessionCost - Time and cost tracking
-- CurrentWorkingDir, TerminalWidth - Environment info
-- CustomText, CustomCommand - User-defined widgets
-
-## Key Implementation Details
-
-- **Cross-platform stdin reading**: Detects Bun vs Node.js environment and uses appropriate stdin API
-- **Token metrics**: Parses Claude Code transcript files (JSONL format) to calculate token usage
-- **Git integration**: Uses child_process.execSync to get current branch and changes
-- **Terminal width management**: Three modes for handling width (full, full-minus-40, full-until-compact)
-- **Flex separators**: Special separator type that expands to fill available space
-- **Powerline mode**: Optional Powerline-style rendering with arrow separators
-- **Custom commands**: Execute shell commands and display output in status line
-- **Mergeable items**: Items can be merged together with or without padding
-
-## Bun Usage Preferences
-
-Default to using Bun instead of Node.js:
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun install` instead of `npm install`
-- Use `bun run <script>` instead of `npm run <script>`
-- Use `bun build` with appropriate options for building
-- Bun automatically loads .env, so don't use dotenv
-
-## Important Notes
-
-- **ink@6.2.0 patch**: The project uses a patch for ink@6.2.0 to fix backspace key handling on macOS
-  - Issue: ink treats `\x7f` (backspace on macOS) as delete key instead of backspace
-  - Fix: Patches `build/parse-keypress.js` to correctly map `\x7f` to backspace
-  - Applied automatically during `bun install` via `patchedDependencies` in package.json
-  - Patch file: `patches/ink@6.2.0.patch`
-- **Build process**: Two-step build using `bun run build`
-  1. `bun build`: Bundles src/ccstatusline.ts into dist/ccstatusline.js targeting Node.js 14+
-  2. `postbuild`: Runs scripts/replace-version.ts to replace `__PACKAGE_VERSION__` placeholder with actual version from package.json
-- **ESLint configuration**: Uses flat config format (eslint.config.js) with TypeScript and React plugins
-- **Dependencies**: All runtime dependencies are bundled using `--packages=external` for npm package
-- **Type checking and linting**: Only run via `bun run lint` command, never using `npx eslint` or `eslint` directly. Never run `tsx`, `bun tsc` or any other variation
-- **Lint rules**: Never disable a lint rule via a comment, no matter how benign the lint warning or error may seem
-- **Testing**: Uses Vitest (via Bun) with 6 test files and ~40 test cases covering:
-  - Model context detection and token calculation (src/utils/__tests__/model-context.test.ts)
-  - Context percentage calculations (src/utils/__tests__/context-percentage.test.ts)
-  - JSONL transcript parsing (src/utils/__tests__/jsonl.test.ts)
-  - Widget rendering (src/widgets/__tests__/*.test.ts)
-  - Run tests with `bun test` or `bun test --watch` for watch mode
-  - Test configuration: vitest.config.ts
-  - Manual testing also available via piped input and TUI interaction
+MIT. Original work copyright (c) 2025 Matthew Breedlove; see `NOTICE` and
+`AUTHORS`.
