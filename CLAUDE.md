@@ -57,9 +57,10 @@ error (`install.sh:1-20`).
 ## Things worth knowing before editing
 
 - **Unknown widget types render as `[type]`**, which looks the same as a widget
-  with no data. Five widgets shipped that way in production. `UNIMPLEMENTED` in
-  `src/widgets/mod.rs` lists the known gaps, and a test fails when a shipped
-  config gains a type outside that list.
+  with no data. Five widgets shipped that way in production (commit 809d802;
+  the five are named in the guard test at `src/widgets/mod.rs:222-243`).
+  `UNIMPLEMENTED` in `src/widgets/mod.rs` lists the known gaps, and a test fails
+  when a shipped config gains a type outside that list.
 - **Several settings keys parse but are dead**: `flexMode`, `compactThreshold`,
   `colorLevel`, `defaultSeparator`, `inheritSeparatorColors`, per-widget
   `padding`, and every `powerline` field except `enabled` and `separators[0]`.

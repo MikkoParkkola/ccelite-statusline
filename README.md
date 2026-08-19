@@ -81,8 +81,9 @@ lines longer than that are clipped (`src/render.rs:6-52`).
 
 `type` values fall through a single dispatch table in
 `src/widgets/mod.rs:24-101`. An unrecognised type renders as its own name in
-square brackets, for example `[block-timer]`, so a typo is visible rather than
-silent.
+square brackets, for example `[block-timer]`. That output is easy to miss: five
+types reached the live status line rendering their own name, and were fixed only
+in commit 809d802 (`src/widgets/mod.rs:80-84`).
 
 The 62 recognised types:
 
