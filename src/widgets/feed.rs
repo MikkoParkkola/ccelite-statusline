@@ -731,7 +731,7 @@ mod tests {
         // This test validates the render path when load_feed returns empty items.
         let empty_feed = FeedData { items: Vec::new() };
         // Simulate: line_num=1 with empty items → placeholder
-        let result = match empty_feed.items.get(0) {
+        let result = match empty_feed.items.first() {
             Some(entry) => format_entry(entry, 0),
             None => NO_RECENT_ITEMS.to_string(),
         };

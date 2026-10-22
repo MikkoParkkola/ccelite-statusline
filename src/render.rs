@@ -15,12 +15,11 @@ use crate::widgets::{RenderContext, preload_custom_commands, render_widget};
 /// clobber rows 2..N — producing the "only header visible" symptom.
 fn detect_terminal_width() -> Option<usize> {
     // 1. $COLUMNS
-    if let Ok(cols) = std::env::var("COLUMNS") {
-        if let Ok(n) = cols.parse::<usize>() {
-            if n > 0 {
-                return Some(n);
-            }
-        }
+    if let Ok(cols) = std::env::var("COLUMNS")
+        && let Ok(n) = cols.parse::<usize>()
+        && n > 0
+    {
+        return Some(n);
     }
 
     // 2. ioctl(TIOCGWINSZ) on /dev/tty
@@ -33,7 +32,7 @@ fn detect_terminal_width() -> Option<usize> {
             ws_ypixel: libc::c_ushort,
         }
 
-        let path = b"/dev/tty\0".as_ptr() as *const libc::c_char;
+        let path = c"/dev/tty".as_ptr();
         let fd = libc::open(path, libc::O_RDONLY | libc::O_NOCTTY);
         if fd < 0 {
             return None;
@@ -296,9 +295,7 @@ fn render_line_aligned(
 
         // Render merged group
         let mut group_width = 0;
-        for k in i..=merge_end {
-            let (_, w) = &filtered[k];
-
+        for (k, (_, w)) in filtered.iter().enumerate().take(merge_end + 1).skip(i) {
             // Get colors
             let fg: Option<Color> = w.widget.color.as_ref().and_then(|c| Color::parse(c));
             let bg: Option<Color> = w
@@ -317,20 +314,18 @@ fn render_line_aligned(
                     .as_ref()
                     .map(|p| p.enabled)
                     .unwrap_or(false)
+                && let Some(ref prev) = prev_bg
+                && let Some(ref current_bg) = bg
             {
-                if let Some(ref prev) = prev_bg {
-                    if let Some(ref current_bg) = bg {
-                        let sep = settings
-                            .powerline
-                            .as_ref()
-                            .and_then(|p| p.separators.first())
-                            .map(|s| s.as_str())
-                            .unwrap_or(" ");
-                        output.push_str(&prev.to_ansi_fg());
-                        output.push_str(&current_bg.to_ansi_bg());
-                        output.push_str(sep);
-                    }
-                }
+                let sep = settings
+                    .powerline
+                    .as_ref()
+                    .and_then(|p| p.separators.first())
+                    .map(|s| s.as_str())
+                    .unwrap_or(" ");
+                output.push_str(&prev.to_ansi_fg());
+                output.push_str(&current_bg.to_ansi_bg());
+                output.push_str(sep);
             }
 
             // Apply colors
@@ -432,7 +427,7 @@ fn truncate_with_ansi(s: &str, max: usize) -> String {
     let mut result = String::new();
     let mut visible_len = 0;
     let mut in_escape = false;
-    let target = if max >= 3 { max - 3 } else { 0 }; // Leave room for "..."
+    let target = max.saturating_sub(3); // Leave room for "..."
 
     for c in s.chars() {
         if c == '\x1b' {
