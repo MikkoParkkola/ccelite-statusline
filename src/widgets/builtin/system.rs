@@ -44,10 +44,10 @@ pub fn render_git_changes() -> Option<String> {
                 if let Some(num) = part.split_whitespace().next() {
                     insertions = num.parse().unwrap_or(0);
                 }
-            } else if part.contains("deletion") {
-                if let Some(num) = part.split_whitespace().next() {
-                    deletions = num.parse().unwrap_or(0);
-                }
+            } else if part.contains("deletion")
+                && let Some(num) = part.split_whitespace().next()
+            {
+                deletions = num.parse().unwrap_or(0);
             }
         }
 
@@ -123,10 +123,10 @@ pub fn render_memory_percent() -> Option<String> {
                     if let Some(num) = extract_number(line) {
                         inactive = num;
                     }
-                } else if line.contains("Pages wired down:") {
-                    if let Some(num) = extract_number(line) {
-                        wired = num;
-                    }
+                } else if line.contains("Pages wired down:")
+                    && let Some(num) = extract_number(line)
+                {
+                    wired = num;
                 }
             }
 
@@ -178,6 +178,8 @@ pub fn render_disk_free() -> Option<String> {
         let rc = unsafe { libc::statvfs(path.as_ptr(), stat.as_mut_ptr()) };
         if rc == 0 {
             let stat = unsafe { stat.assume_init() };
+            // f_frsize is c_ulong: u64 on 64-bit targets, u32 elsewhere.
+            #[allow(clippy::unnecessary_cast)]
             let free_bytes = stat.f_bavail as u64 * stat.f_frsize as u64;
             let gb = free_bytes as f64 / 1_073_741_824.0;
             return Some(if gb >= 1000.0 {

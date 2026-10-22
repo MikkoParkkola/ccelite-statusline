@@ -35,10 +35,10 @@ pub fn render_model(input: &StatusInput) -> Option<String> {
 /// Render context percentage (used/limit)
 pub fn render_context_percentage(input: &StatusInput) -> Option<String> {
     // Priority 1: Live context_window from Claude Code
-    if let Some(cw) = input.context_window.as_ref() {
-        if let Some(used_pct) = cw.used_percentage {
-            return Some(format!("{:.0}%", used_pct));
-        }
+    if let Some(cw) = input.context_window.as_ref()
+        && let Some(used_pct) = cw.used_percentage
+    {
+        return Some(format!("{:.0}%", used_pct));
     }
 
     // Priority 2: Raw token counts
@@ -111,23 +111,23 @@ pub fn render_session_cost_elite(input: &StatusInput) -> Option<String> {
     // Priority 2: file cache may carry cache_hit_pct not in the live payload
     let cache_path = claude_data_dir()?.join("session_cost.json");
 
-    if let Ok(content) = std::fs::read_to_string(&cache_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let file_cost = json.get("cost_usd").and_then(|c| c.as_f64()).unwrap_or(0.0);
-            let cache_hit_pct = json
-                .get("cache_hit_pct")
-                .and_then(|c| c.as_f64())
-                .unwrap_or(0.0);
+    if let Ok(content) = std::fs::read_to_string(&cache_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        let file_cost = json.get("cost_usd").and_then(|c| c.as_f64()).unwrap_or(0.0);
+        let cache_hit_pct = json
+            .get("cache_hit_pct")
+            .and_then(|c| c.as_f64())
+            .unwrap_or(0.0);
 
-            // Use live cost when available (more accurate), fall back to file cost
-            let cost_usd = live_cost.unwrap_or(file_cost);
+        // Use live cost when available (more accurate), fall back to file cost
+        let cost_usd = live_cost.unwrap_or(file_cost);
 
-            if cost_usd > 0.0 {
-                if cache_hit_pct > 0.0 {
-                    return Some(format!("${:.2} ({:.0}% cache)", cost_usd, cache_hit_pct));
-                } else {
-                    return Some(format!("${:.2}", cost_usd));
-                }
+        if cost_usd > 0.0 {
+            if cache_hit_pct > 0.0 {
+                return Some(format!("${:.2} ({:.0}% cache)", cost_usd, cache_hit_pct));
+            } else {
+                return Some(format!("${:.2}", cost_usd));
             }
         }
     }
@@ -228,19 +228,19 @@ pub fn render_weekly_quota(input: &StatusInput) -> Option<String> {
 ///
 /// Format: "low", "med", "high", "!crit"
 pub fn render_context_collapse_risk(input: &StatusInput) -> Option<String> {
-    if let Some(cw) = input.context_window.as_ref() {
-        if let Some(used_pct) = cw.used_percentage {
-            // Simple threshold-based risk assessment
-            return Some(if used_pct >= 85.0 {
-                "!crit".to_string()
-            } else if used_pct >= 70.0 {
-                "high".to_string()
-            } else if used_pct >= 50.0 {
-                "med".to_string()
-            } else {
-                "low".to_string()
-            });
-        }
+    if let Some(cw) = input.context_window.as_ref()
+        && let Some(used_pct) = cw.used_percentage
+    {
+        // Simple threshold-based risk assessment
+        return Some(if used_pct >= 85.0 {
+            "!crit".to_string()
+        } else if used_pct >= 70.0 {
+            "high".to_string()
+        } else if used_pct >= 50.0 {
+            "med".to_string()
+        } else {
+            "low".to_string()
+        });
     }
 
     // No live data — check file cache for context percentage

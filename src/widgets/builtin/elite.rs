@@ -7,30 +7,30 @@ use super::*;
 pub fn render_session_npv(_input: &StatusInput) -> Option<String> {
     let value_path = claude_data_dir()?.join("session_value.json");
 
-    if let Ok(content) = std::fs::read_to_string(&value_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Get expected value from total_value.expected
-            if let Some(expected) = json
-                .get("total_value")
-                .and_then(|tv| tv.get("expected"))
-                .and_then(|e| e.as_f64())
-            {
-                // Subtract claude_cost to get NPV
-                let cost = json
-                    .get("roi")
-                    .and_then(|r| r.get("claude_cost"))
-                    .and_then(|c| c.as_f64())
-                    .unwrap_or(0.0);
+    if let Ok(content) = std::fs::read_to_string(&value_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Get expected value from total_value.expected
+        if let Some(expected) = json
+            .get("total_value")
+            .and_then(|tv| tv.get("expected"))
+            .and_then(|e| e.as_f64())
+        {
+            // Subtract claude_cost to get NPV
+            let cost = json
+                .get("roi")
+                .and_then(|r| r.get("claude_cost"))
+                .and_then(|c| c.as_f64())
+                .unwrap_or(0.0);
 
-                let npv = (expected - cost).max(0.0);
+            let npv = (expected - cost).max(0.0);
 
-                if npv >= 1_000_000.0 {
-                    return Some(format!("${:.1}M", npv / 1_000_000.0));
-                } else if npv >= 1_000.0 {
-                    return Some(format!("${:.1}K", npv / 1_000.0));
-                } else if npv > 0.0 {
-                    return Some(format!("${:.0}", npv));
-                }
+            if npv >= 1_000_000.0 {
+                return Some(format!("${:.1}M", npv / 1_000_000.0));
+            } else if npv >= 1_000.0 {
+                return Some(format!("${:.1}K", npv / 1_000.0));
+            } else if npv > 0.0 {
+                return Some(format!("${:.0}", npv));
             }
         }
     }
@@ -42,23 +42,22 @@ pub fn render_session_npv(_input: &StatusInput) -> Option<String> {
 pub fn render_roi(_input: &StatusInput) -> Option<String> {
     let value_path = claude_data_dir()?.join("session_value.json");
 
-    if let Ok(content) = std::fs::read_to_string(&value_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Get ROI multiplier from roi.multiplier
-            if let Some(multiplier) = json
-                .get("roi")
-                .and_then(|r| r.get("multiplier"))
-                .and_then(|m| m.as_f64())
-            {
-                if multiplier > 0.0 {
-                    if multiplier >= 1_000_000.0 {
-                        return Some(format!("{:.1}M×", multiplier / 1_000_000.0));
-                    } else if multiplier >= 1_000.0 {
-                        return Some(format!("{:.0}K×", multiplier / 1_000.0));
-                    } else {
-                        return Some(format!("{:.0}×", multiplier));
-                    }
-                }
+    if let Ok(content) = std::fs::read_to_string(&value_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Get ROI multiplier from roi.multiplier
+        if let Some(multiplier) = json
+            .get("roi")
+            .and_then(|r| r.get("multiplier"))
+            .and_then(|m| m.as_f64())
+            && multiplier > 0.0
+        {
+            if multiplier >= 1_000_000.0 {
+                return Some(format!("{:.1}M×", multiplier / 1_000_000.0));
+            } else if multiplier >= 1_000.0 {
+                return Some(format!("{:.0}K×", multiplier / 1_000.0));
+            } else {
+                return Some(format!("{:.0}×", multiplier));
             }
         }
     }
@@ -71,12 +70,11 @@ pub fn render_mcp_count() -> Option<String> {
     // Count MCP servers from settings
     let mcp_path = dirs::home_dir()?.join(".claude").join("settings.json");
 
-    if let Ok(content) = std::fs::read_to_string(&mcp_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object()) {
-                return Some(mcps.len().to_string());
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&mcp_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object())
+    {
+        return Some(mcps.len().to_string());
     }
 
     Some("0".to_string())
@@ -91,25 +89,25 @@ pub fn render_hooks_status() -> Option<String> {
 pub fn render_tokens_cached(_input: &StatusInput) -> Option<String> {
     let telemetry_path = claude_data_dir()?.join("elite_telemetry_cache.json");
 
-    if let Ok(content) = std::fs::read_to_string(&telemetry_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Get daemon_cache_hit_rate from elite_value (most accurate).
-            // eis_daemon serialises the same number as cache_hit_rate_pct; the
-            // older key is kept first so a hand-written cache still wins.
-            if let Some(hit_rate) = json.get("elite_value").and_then(|ev| {
-                ev.get("daemon_cache_hit_rate")
-                    .or_else(|| ev.get("cache_hit_rate_pct"))
-                    .and_then(serde_json::Value::as_f64)
-            }) {
-                return Some(format!("{:.0}%", hit_rate));
-            }
+    if let Ok(content) = std::fs::read_to_string(&telemetry_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Get daemon_cache_hit_rate from elite_value (most accurate).
+        // eis_daemon serialises the same number as cache_hit_rate_pct; the
+        // older key is kept first so a hand-written cache still wins.
+        if let Some(hit_rate) = json.get("elite_value").and_then(|ev| {
+            ev.get("daemon_cache_hit_rate")
+                .or_else(|| ev.get("cache_hit_rate_pct"))
+                .and_then(serde_json::Value::as_f64)
+        }) {
+            return Some(format!("{:.0}%", hit_rate));
+        }
 
-            // Fallback: calculate from cache_metrics
-            if let Some(metrics) = json.get("cache_metrics") {
-                if let Some(hit_rate) = metrics.get("hit_rate").and_then(|r| r.as_f64()) {
-                    return Some(format!("{:.0}%", hit_rate * 100.0));
-                }
-            }
+        // Fallback: calculate from cache_metrics
+        if let Some(metrics) = json.get("cache_metrics")
+            && let Some(hit_rate) = metrics.get("hit_rate").and_then(|r| r.as_f64())
+        {
+            return Some(format!("{:.0}%", hit_rate * 100.0));
         }
     }
 
@@ -137,10 +135,9 @@ pub fn render_coverage() -> Option<String> {
     if let Some(cov) = cq
         .and_then(|cq| cq.get("test_coverage_pct"))
         .and_then(|r| r.as_f64())
+        && cov > 0.0
     {
-        if cov > 0.0 {
-            return Some(format!("{:.0}%", cov));
-        }
+        return Some(format!("{:.0}%", cov));
     }
     Some("—".to_string())
 }
@@ -150,38 +147,37 @@ pub fn render_coverage() -> Option<String> {
 pub fn render_codex_tokens_saved() -> Option<String> {
     let telemetry_path = claude_data_dir()?.join("elite_telemetry_cache.json");
 
-    if let Ok(content) = std::fs::read_to_string(&telemetry_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Get cost_savings_dollars from elite_value
-            if let Some(savings) = json
-                .get("elite_value")
-                .and_then(|ev| ev.get("cost_savings_dollars"))
-                .and_then(|s| s.as_f64())
-            {
-                if savings > 0.0 {
-                    if savings >= 1000.0 {
-                        return Some(format!("${:.1}K", savings / 1000.0));
-                    } else if savings >= 1.0 {
-                        return Some(format!("${:.0}", savings));
-                    } else {
-                        return Some(format!("${:.2}", savings));
-                    }
-                }
+    if let Ok(content) = std::fs::read_to_string(&telemetry_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Get cost_savings_dollars from elite_value
+        if let Some(savings) = json
+            .get("elite_value")
+            .and_then(|ev| ev.get("cost_savings_dollars"))
+            .and_then(|s| s.as_f64())
+            && savings > 0.0
+        {
+            if savings >= 1000.0 {
+                return Some(format!("${:.1}K", savings / 1000.0));
+            } else if savings >= 1.0 {
+                return Some(format!("${:.0}", savings));
+            } else {
+                return Some(format!("${:.2}", savings));
             }
+        }
 
-            // Fallback: estimate from cache hits
-            // Assume each cache hit saves ~$0.0001 (rough estimate)
-            if let Some(hits) = json
-                .get("cache_metrics")
-                .and_then(|cm| cm.get("total_hits"))
-                .and_then(|h| h.as_u64())
-            {
-                let estimated_savings = hits as f64 * 0.0001;
-                if estimated_savings >= 1.0 {
-                    return Some(format!("~${:.0}", estimated_savings));
-                } else if estimated_savings > 0.0 {
-                    return Some(format!("~${:.2}", estimated_savings));
-                }
+        // Fallback: estimate from cache hits
+        // Assume each cache hit saves ~$0.0001 (rough estimate)
+        if let Some(hits) = json
+            .get("cache_metrics")
+            .and_then(|cm| cm.get("total_hits"))
+            .and_then(|h| h.as_u64())
+        {
+            let estimated_savings = hits as f64 * 0.0001;
+            if estimated_savings >= 1.0 {
+                return Some(format!("~${:.0}", estimated_savings));
+            } else if estimated_savings > 0.0 {
+                return Some(format!("~${:.2}", estimated_savings));
             }
         }
     }
@@ -300,45 +296,40 @@ pub fn render_alert() -> Option<String> {
     let mut alerts = Vec::new();
 
     // Check quota from cache
-    if let Ok(content) = std::fs::read_to_string(&cache_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Check 5-hour quota
-            if let Some(five_hr) = json
-                .get("five_hour")
-                .and_then(|f| f.get("utilization"))
-                .and_then(|u| u.as_f64())
-            {
-                if five_hr > 80.0 {
-                    alerts.push("5h!");
-                }
-            }
+    if let Ok(content) = std::fs::read_to_string(&cache_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Check 5-hour quota
+        if let Some(five_hr) = json
+            .get("five_hour")
+            .and_then(|f| f.get("utilization"))
+            .and_then(|u| u.as_f64())
+            && five_hr > 80.0
+        {
+            alerts.push("5h!");
+        }
 
-            // Check 7-day quota
-            if let Some(seven_day) = json
-                .get("seven_day")
-                .and_then(|f| f.get("utilization"))
-                .and_then(|u| u.as_f64())
-            {
-                if seven_day > 90.0 {
-                    alerts.push("7d!");
-                }
-            }
+        // Check 7-day quota
+        if let Some(seven_day) = json
+            .get("seven_day")
+            .and_then(|f| f.get("utilization"))
+            .and_then(|u| u.as_f64())
+            && seven_day > 90.0
+        {
+            alerts.push("7d!");
         }
     }
 
     // Check daemon health
     let heartbeat_path = claude_data_dir()?.join("elite_daemon_heartbeat.json");
 
-    if heartbeat_path.exists() {
-        if let Ok(metadata) = std::fs::metadata(&heartbeat_path) {
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(age) = std::time::SystemTime::now().duration_since(modified) {
-                    if age.as_secs() > 300 {
-                        alerts.push("D!");
-                    }
-                }
-            }
-        }
+    if heartbeat_path.exists()
+        && let Ok(metadata) = std::fs::metadata(&heartbeat_path)
+        && let Ok(modified) = metadata.modified()
+        && let Ok(age) = std::time::SystemTime::now().duration_since(modified)
+        && age.as_secs() > 300
+    {
+        alerts.push("D!");
     }
 
     if alerts.is_empty() {
@@ -355,20 +346,19 @@ pub fn render_alert() -> Option<String> {
 pub fn render_risk() -> Option<String> {
     let implicit_path = claude_data_dir()?.join("implicit_feedback_state.json");
 
-    if let Ok(content) = std::fs::read_to_string(&implicit_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(tool_fb) = json.get("tool_feedback").and_then(|t| t.as_object()) {
-                let errors: u64 = tool_fb
-                    .values()
-                    .filter_map(|v| v.get("negative").and_then(|n| n.as_u64()))
-                    .sum();
-                return Some(if errors >= 10 {
-                    format!("⚠{}", errors)
-                } else {
-                    errors.to_string()
-                });
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&implicit_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(tool_fb) = json.get("tool_feedback").and_then(|t| t.as_object())
+    {
+        let errors: u64 = tool_fb
+            .values()
+            .filter_map(|v| v.get("negative").and_then(|n| n.as_u64()))
+            .sum();
+        return Some(if errors >= 10 {
+            format!("⚠{}", errors)
+        } else {
+            errors.to_string()
+        });
     }
 
     Some("0".to_string())
@@ -378,12 +368,11 @@ pub fn render_risk() -> Option<String> {
 pub fn render_quality() -> Option<String> {
     let cache_path = claude_data_dir()?.join("session_quality.json");
 
-    if let Ok(content) = std::fs::read_to_string(&cache_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(grade) = json.get("grade").and_then(|g| g.as_str()) {
-                return Some(grade.to_string());
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&cache_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(grade) = json.get("grade").and_then(|g| g.as_str())
+    {
+        return Some(grade.to_string());
     }
 
     Some("B".to_string())
@@ -394,16 +383,14 @@ pub fn render_quality() -> Option<String> {
 /// Shows estimated user turns remaining at current burn rate.
 /// Format: "42", "∞"
 pub fn render_turns() -> Option<String> {
-    if let Some(json) = read_telemetry() {
-        if let Some(turns) = json
+    if let Some(json) = read_telemetry()
+        && let Some(turns) = json
             .get("quota_prediction")
             .and_then(|qp| qp.get("exhaustion_turns"))
             .and_then(|t| t.as_u64())
-        {
-            if turns > 0 {
-                return Some(turns.to_string());
-            }
-        }
+        && turns > 0
+    {
+        return Some(turns.to_string());
     }
 
     Some("∞".to_string())
@@ -421,31 +408,26 @@ pub fn render_first_try_rate() -> Option<String> {
     let rt_path = claude_data_dir()?
         .join("quality")
         .join("realtime_metrics.json");
-    if let Ok(content) = std::fs::read_to_string(&rt_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(rate) = json
-                .get("ftsr")
-                .and_then(|f| f.get("estimate"))
-                .and_then(|e| e.as_f64())
-            {
-                if rate > 0.0 {
-                    return Some(format!("{:.0}%", rate * 100.0));
-                }
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&rt_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(rate) = json
+            .get("ftsr")
+            .and_then(|f| f.get("estimate"))
+            .and_then(|e| e.as_f64())
+        && rate > 0.0
+    {
+        return Some(format!("{:.0}%", rate * 100.0));
     }
 
     // Priority 2: telemetry cache (cross-session aggregate)
-    if let Some(json) = read_telemetry() {
-        if let Some(rate) = json
+    if let Some(json) = read_telemetry()
+        && let Some(rate) = json
             .get("elite_value")
             .and_then(|ev| ev.get("first_try_success_rate"))
             .and_then(|r| r.as_f64())
-        {
-            if rate > 0.0 {
-                return Some(format!("{:.0}%", rate));
-            }
-        }
+        && rate > 0.0
+    {
+        return Some(format!("{:.0}%", rate));
     }
 
     Some("—".to_string())
@@ -455,26 +437,25 @@ pub fn render_first_try_rate() -> Option<String> {
 /// Parity with statusline-lint-errors.sh.
 pub fn render_lint_errors() -> Option<String> {
     // Primary: telemetry cache (has ruff+mypy+bandit breakdown)
-    if let Some(json) = read_telemetry() {
-        if let Some(cq) = measured_code_quality(&json) {
-            let ruff = cq.get("ruff_errors").and_then(|v| v.as_u64()).unwrap_or(0);
-            let mypy = cq.get("mypy_errors").and_then(|v| v.as_u64()).unwrap_or(0);
-            let bandit = cq
-                .get("bandit_issues")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            return Some((ruff + mypy + bandit).to_string());
-        }
+    if let Some(json) = read_telemetry()
+        && let Some(cq) = measured_code_quality(&json)
+    {
+        let ruff = cq.get("ruff_errors").and_then(|v| v.as_u64()).unwrap_or(0);
+        let mypy = cq.get("mypy_errors").and_then(|v| v.as_u64()).unwrap_or(0);
+        let bandit = cq
+            .get("bandit_issues")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        return Some((ruff + mypy + bandit).to_string());
     }
 
     // Fallback: lint_cache.json
     let cache_path = claude_data_dir()?.join("lint_cache.json");
-    if let Ok(content) = std::fs::read_to_string(&cache_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(count) = json.get("error_count").and_then(|c| c.as_u64()) {
-                return Some(count.to_string());
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&cache_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(count) = json.get("error_count").and_then(|c| c.as_u64())
+    {
+        return Some(count.to_string());
     }
 
     // Neither telemetry nor the lint cache holds a measurement, so "0" here would
@@ -489,12 +470,12 @@ pub fn render_lint_errors() -> Option<String> {
 pub fn render_bugs_clarity() -> Option<String> {
     let quality_path = claude_data_dir()?.join("session_quality.json");
 
-    if let Ok(content) = std::fs::read_to_string(&quality_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let bugs = json.get("bug_count").and_then(|b| b.as_u64()).unwrap_or(0);
-            let grade = json.get("grade").and_then(|g| g.as_str()).unwrap_or("—");
-            return Some(format!("{} {}", bugs, grade));
-        }
+    if let Ok(content) = std::fs::read_to_string(&quality_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        let bugs = json.get("bug_count").and_then(|b| b.as_u64()).unwrap_or(0);
+        let grade = json.get("grade").and_then(|g| g.as_str()).unwrap_or("—");
+        return Some(format!("{} {}", bugs, grade));
     }
 
     Some("0 —".to_string())
@@ -544,16 +525,14 @@ pub fn render_burn_rate_clarity(_input: &StatusInput) -> Option<String> {
     }
 
     // Fallback: telemetry prediction
-    if let Some(json) = read_telemetry() {
-        if let Some(rate) = json
+    if let Some(json) = read_telemetry()
+        && let Some(rate) = json
             .get("elite_value")
             .and_then(|ev| ev.get("burn_rate_tokens_per_min"))
             .and_then(|r| r.as_f64())
-        {
-            if rate > 0.0 {
-                return Some(format!("{:.0}/m", rate));
-            }
-        }
+        && rate > 0.0
+    {
+        return Some(format!("{:.0}/m", rate));
     }
 
     Some("—".to_string())
@@ -565,18 +544,17 @@ pub fn render_burn_rate_clarity(_input: &StatusInput) -> Option<String> {
 pub fn render_token_phase() -> Option<String> {
     let path = claude_data_dir()?.join("token_phase.json");
 
-    if let Ok(content) = std::fs::read_to_string(&path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(phase) = json.get("phase").and_then(|p| p.as_str()) {
-                return Some(match phase {
-                    "full" => "\u{1f7e2}full".to_string(),
-                    "save" => "\u{1f7e1}save".to_string(),
-                    "tight" => "\u{1f7e0}tight".to_string(),
-                    "crit" | "critical" => "\u{1f534}crit".to_string(),
-                    other => other.to_string(),
-                });
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(phase) = json.get("phase").and_then(|p| p.as_str())
+    {
+        return Some(match phase {
+            "full" => "\u{1f7e2}full".to_string(),
+            "save" => "\u{1f7e1}save".to_string(),
+            "tight" => "\u{1f7e0}tight".to_string(),
+            "crit" | "critical" => "\u{1f534}crit".to_string(),
+            other => other.to_string(),
+        });
     }
 
     Some("\u{2014}".to_string())
@@ -621,10 +599,10 @@ pub fn render_recent_fails() -> Option<String> {
                             return epoch >= one_hour_ago;
                         }
                         // ISO string fallback
-                        if let Some(s) = ts.as_str() {
-                            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-                                return dt.timestamp() as u64 >= one_hour_ago;
-                            }
+                        if let Some(s) = ts.as_str()
+                            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s)
+                        {
+                            return dt.timestamp() as u64 >= one_hour_ago;
                         }
                     }
                 }
@@ -685,12 +663,11 @@ pub fn render_tools_count() -> Option<String> {
     }
     // Fallback: count MCP servers × gateway reported avg
     let mcp_path = dirs::home_dir()?.join(".claude").join("settings.json");
-    if let Ok(content) = std::fs::read_to_string(&mcp_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object()) {
-                return Some(format!("{}+", mcps.len() * 10));
-            }
-        }
+    if let Ok(content) = std::fs::read_to_string(&mcp_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        && let Some(mcps) = json.get("mcpServers").and_then(|m| m.as_object())
+    {
+        return Some(format!("{}+", mcps.len() * 10));
     }
     Some("?".to_string())
 }
@@ -704,27 +681,27 @@ pub fn render_saved_per_session() -> Option<String> {
     // plus estimated token savings from rules optimization
     let quality_path = claude_data_dir()?.join("compact_quality.json");
     let mut saved_dollars = 0.0_f64;
-    if let Ok(content) = std::fs::read_to_string(&quality_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let chars = json
-                .get("char_count")
-                .and_then(|c| c.as_f64())
-                .unwrap_or(0.0);
-            // Estimate: compression saved ~50% of what would have been
-            saved_dollars += (chars / 4.0) * 0.000003; // tokens * $0.003/1K
-        }
+    if let Ok(content) = std::fs::read_to_string(&quality_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        let chars = json
+            .get("char_count")
+            .and_then(|c| c.as_f64())
+            .unwrap_or(0.0);
+        // Estimate: compression saved ~50% of what would have been
+        saved_dollars += (chars / 4.0) * 0.000003; // tokens * $0.003/1K
     }
     // Base savings from rules-source→skills optimization (~95K tok/turn × turns × $0.003/1K)
     let phase_path = claude_data_dir()?.join("token_phase.json");
-    if let Ok(content) = std::fs::read_to_string(&phase_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let calls = json
-                .get("tool_calls")
-                .and_then(|c| c.as_f64())
-                .unwrap_or(0.0);
-            // ~95K tokens saved per turn from rules optimization
-            saved_dollars += calls * 95.0 * 0.003; // turns × 95K tok × $0.003/1K
-        }
+    if let Ok(content) = std::fs::read_to_string(&phase_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        let calls = json
+            .get("tool_calls")
+            .and_then(|c| c.as_f64())
+            .unwrap_or(0.0);
+        // ~95K tokens saved per turn from rules optimization
+        saved_dollars += calls * 95.0 * 0.003; // turns × 95K tok × $0.003/1K
     }
     if saved_dollars > 0.01 {
         Some(format!("${:.0}", saved_dollars))
@@ -759,20 +736,20 @@ pub fn render_daemon_latency() -> Option<String> {
 pub fn render_rate_status() -> Option<String> {
     let cache_path = claude_data_dir()?.join("usage_cache.json");
 
-    if let Ok(content) = std::fs::read_to_string(&cache_path) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            // Check for rate limit status
-            if let Some(status) = json.get("rate_limit_status").and_then(|s| s.as_str()) {
-                return Some(status.to_string());
-            }
-            // Fallback: show 5hr utilization as status
-            if let Some(five_hr) = json
-                .get("five_hour")
-                .and_then(|f| f.get("utilization"))
-                .and_then(|u| u.as_f64())
-            {
-                return Some(format!("S:{:.0}%", five_hr));
-            }
+    if let Ok(content) = std::fs::read_to_string(&cache_path)
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+    {
+        // Check for rate limit status
+        if let Some(status) = json.get("rate_limit_status").and_then(|s| s.as_str()) {
+            return Some(status.to_string());
+        }
+        // Fallback: show 5hr utilization as status
+        if let Some(five_hr) = json
+            .get("five_hour")
+            .and_then(|f| f.get("utilization"))
+            .and_then(|u| u.as_f64())
+        {
+            return Some(format!("S:{:.0}%", five_hr));
         }
     }
 

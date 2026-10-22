@@ -59,7 +59,7 @@ fn read_usage_cache() -> Option<serde_json::Value> {
 ///   >24h  → "6d 21h"
 ///   >1h   → "2h 9m"
 ///   >10m  → "42m"
-///   ≤10m  → "8m 30s"
+/// > ≤10m  → "8m 30s"
 fn format_reset_ttl(ttr: &serde_json::Value) -> Option<String> {
     let days = ttr.get("days").and_then(|d| d.as_u64()).unwrap_or(0);
     let hours = ttr.get("hours").and_then(|h| h.as_u64()).unwrap_or(0);
