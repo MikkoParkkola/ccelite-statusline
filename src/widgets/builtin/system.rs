@@ -148,9 +148,6 @@ fn extract_number(line: &str) -> Option<u64> {
         .next()
 }
 
-/// Render free disk space on the main volume.
-///
-/// Format: "92G", "1.2T", "450M"
 /// One-minute load average.
 ///
 /// The `load-average` type used to be aliased to `render_disk_free`, so a cell
@@ -168,6 +165,9 @@ pub fn render_load_average() -> Option<String> {
     None
 }
 
+/// Render free disk space on the main volume.
+///
+/// Format: "92G", "1.2T", "450M"
 pub fn render_disk_free() -> Option<String> {
     #[cfg(target_os = "macos")]
     {

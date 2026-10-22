@@ -1,4 +1,5 @@
-//! Widgets that read Claude Elite hook output under `~/.claude/data`.
+//! Widgets that read Claude Elite state: hook output under `~/.claude/data`, plus
+//! Claude configuration, worktrees and local service probes.
 
 use super::*;
 

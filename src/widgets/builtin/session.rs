@@ -1,4 +1,5 @@
-//! Widgets computed from the session input Claude Code passes on stdin.
+//! Widgets driven mainly by the session input Claude Code passes on stdin; a few
+//! enrich or fall back to Claude Elite files under `~/.claude/data`.
 
 use super::*;
 
