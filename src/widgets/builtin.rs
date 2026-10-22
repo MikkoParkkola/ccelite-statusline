@@ -3,6 +3,11 @@
 use crate::types::StatusInput;
 use std::process::Command;
 
+/// `~/.claude/data`, where the Claude Elite hooks write the state these widgets read.
+fn claude_data_dir() -> Option<std::path::PathBuf> {
+    Some(dirs::home_dir()?.join(".claude").join("data"))
+}
+
 /// Render model name
 pub fn render_model(input: &StatusInput) -> Option<String> {
     let model = input.model.as_ref()?;
@@ -109,10 +114,7 @@ pub fn render_session_cost_elite(input: &StatusInput) -> Option<String> {
     let live_cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
 
     // Priority 2: file cache may carry cache_hit_pct not in the live payload
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("session_cost.json");
+    let cache_path = claude_data_dir()?.join("session_cost.json");
 
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -163,10 +165,7 @@ pub fn render_session_clock(input: &StatusInput) -> Option<String> {
 
 /// Render session NPV from session_value.json (official source)
 pub fn render_session_npv(_input: &StatusInput) -> Option<String> {
-    let value_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("session_value.json");
+    let value_path = claude_data_dir()?.join("session_value.json");
 
     if let Ok(content) = std::fs::read_to_string(&value_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -201,10 +200,7 @@ pub fn render_session_npv(_input: &StatusInput) -> Option<String> {
 
 /// Render ROI from session_value.json (official source)
 pub fn render_roi(_input: &StatusInput) -> Option<String> {
-    let value_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("session_value.json");
+    let value_path = claude_data_dir()?.join("session_value.json");
 
     if let Ok(content) = std::fs::read_to_string(&value_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -461,10 +457,7 @@ pub fn render_project_name(input: &StatusInput) -> Option<String> {
 
 /// Render cache hit rate percentage from elite_telemetry_cache.json (official source)
 pub fn render_tokens_cached(_input: &StatusInput) -> Option<String> {
-    let telemetry_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("elite_telemetry_cache.json");
+    let telemetry_path = claude_data_dir()?.join("elite_telemetry_cache.json");
 
     if let Ok(content) = std::fs::read_to_string(&telemetry_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -505,10 +498,7 @@ fn format_tokens(tokens: u64) -> String {
 
 /// Helper: read elite_telemetry_cache.json (shared by several widgets).
 fn read_telemetry() -> Option<serde_json::Value> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("elite_telemetry_cache.json");
+    let path = claude_data_dir()?.join("elite_telemetry_cache.json");
     let content = std::fs::read_to_string(&path).ok()?;
     serde_json::from_str(&content).ok()
 }
@@ -557,10 +547,7 @@ pub fn render_coverage() -> Option<String> {
 /// Render cost savings from elite_telemetry_cache.json (official source)
 /// Shows money saved from caching, compression, and optimizations
 pub fn render_codex_tokens_saved() -> Option<String> {
-    let telemetry_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("elite_telemetry_cache.json");
+    let telemetry_path = claude_data_dir()?.join("elite_telemetry_cache.json");
 
     if let Ok(content) = std::fs::read_to_string(&telemetry_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -621,10 +608,7 @@ pub fn render_user_email() -> Option<String> {
 
 /// Render daemon health status based on heartbeat file age
 pub fn render_daemon_health() -> Option<String> {
-    let heartbeat_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("elite_daemon_heartbeat.json");
+    let heartbeat_path = claude_data_dir()?.join("elite_daemon_heartbeat.json");
 
     if !heartbeat_path.exists() {
         return Some("—".to_string());
@@ -653,10 +637,7 @@ pub fn render_daemon_health() -> Option<String> {
 /// Format: "✓" (healthy), "⚠" (port open but no cached status), "✗" (down)
 pub fn render_db_health() -> Option<String> {
     // 1. Cached status from daemon (zero-cost)
-    let status_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("surrealdb_status");
+    let status_path = claude_data_dir()?.join("surrealdb_status");
     if let Ok(content) = std::fs::read_to_string(&status_path) {
         let status = content.trim();
         match status {
@@ -680,10 +661,7 @@ pub fn render_db_health() -> Option<String> {
 
 /// Render data freshness - shows age of quota cache with freshness indicator
 pub fn render_fresh() -> Option<String> {
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("usage_cache.json");
+    let cache_path = claude_data_dir()?.join("usage_cache.json");
 
     if !cache_path.exists() {
         return Some("stale".to_string());
@@ -716,10 +694,7 @@ pub fn render_fresh() -> Option<String> {
 
 /// Render active alerts (quota, daemon)
 pub fn render_alert() -> Option<String> {
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("usage_cache.json");
+    let cache_path = claude_data_dir()?.join("usage_cache.json");
 
     let mut alerts = Vec::new();
 
@@ -751,10 +726,7 @@ pub fn render_alert() -> Option<String> {
     }
 
     // Check daemon health
-    let heartbeat_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("elite_daemon_heartbeat.json");
+    let heartbeat_path = claude_data_dir()?.join("elite_daemon_heartbeat.json");
 
     if heartbeat_path.exists() {
         if let Ok(metadata) = std::fs::metadata(&heartbeat_path) {
@@ -780,10 +752,7 @@ pub fn render_alert() -> Option<String> {
 /// Shows count of negative tool feedback signals this session.
 /// Format: "0", "3", "⚠12"
 pub fn render_risk() -> Option<String> {
-    let implicit_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("implicit_feedback_state.json");
+    let implicit_path = claude_data_dir()?.join("implicit_feedback_state.json");
 
     if let Ok(content) = std::fs::read_to_string(&implicit_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -806,10 +775,7 @@ pub fn render_risk() -> Option<String> {
 
 /// Render quality grade
 pub fn render_quality() -> Option<String> {
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("session_quality.json");
+    let cache_path = claude_data_dir()?.join("session_quality.json");
 
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -851,9 +817,7 @@ pub fn render_turns() -> Option<String> {
 /// Format: "87%", "—"
 pub fn render_first_try_rate() -> Option<String> {
     // Priority 1: realtime quality metrics (most current, per-session)
-    let rt_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
+    let rt_path = claude_data_dir()?
         .join("quality")
         .join("realtime_metrics.json");
     if let Ok(content) = std::fs::read_to_string(&rt_path) {
@@ -903,10 +867,7 @@ pub fn render_lint_errors() -> Option<String> {
     }
 
     // Fallback: lint_cache.json
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("lint_cache.json");
+    let cache_path = claude_data_dir()?.join("lint_cache.json");
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(count) = json.get("error_count").and_then(|c| c.as_u64()) {
@@ -922,10 +883,7 @@ pub fn render_lint_errors() -> Option<String> {
 
 /// Helper: read usage_cache.json once (both quota widgets share it).
 fn read_usage_cache() -> Option<serde_json::Value> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("usage_cache.json");
+    let path = claude_data_dir()?.join("usage_cache.json");
     let content = std::fs::read_to_string(&path).ok()?;
     serde_json::from_str(&content).ok()
 }
@@ -1067,10 +1025,7 @@ pub fn render_context_collapse_risk(input: &StatusInput) -> Option<String> {
 /// Shows bug count + quality grade as a compact summary.
 /// Format: "0 A+" (0 bugs, grade A+) or "3 C" (3 bugs, grade C)
 pub fn render_bugs_clarity() -> Option<String> {
-    let quality_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("session_quality.json");
+    let quality_path = claude_data_dir()?.join("session_quality.json");
 
     if let Ok(content) = std::fs::read_to_string(&quality_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -1161,10 +1116,7 @@ pub fn render_project_elite(input: &StatusInput) -> Option<String> {
 ///
 /// Format: "🟢full", "🟡save", "🟠tight", "🔴crit"
 pub fn render_token_phase() -> Option<String> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("token_phase.json");
+    let path = claude_data_dir()?.join("token_phase.json");
 
     if let Ok(content) = std::fs::read_to_string(&path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -1188,10 +1140,7 @@ pub fn render_token_phase() -> Option<String> {
 /// Format: "+N"
 pub fn render_event_bus_count() -> Option<String> {
     // Use hook_timing.jsonl — grows every tool call (live activity indicator)
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("hook_timing.jsonl");
+    let path = claude_data_dir()?.join("hook_timing.jsonl");
 
     if let Ok(content) = std::fs::read_to_string(&path) {
         let count = content.lines().filter(|l| !l.trim().is_empty()).count();
@@ -1205,10 +1154,7 @@ pub fn render_event_bus_count() -> Option<String> {
 ///
 /// Format: "N"
 pub fn render_recent_fails() -> Option<String> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("failures.jsonl");
+    let path = claude_data_dir()?.join("failures.jsonl");
 
     if let Ok(content) = std::fs::read_to_string(&path) {
         let now = std::time::SystemTime::now();
@@ -1248,9 +1194,7 @@ pub fn render_recent_fails() -> Option<String> {
 ///
 /// Format: "N"
 pub fn render_proposal_queue() -> Option<String> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
+    let path = claude_data_dir()?
         .join("improvements")
         .join("proposals.jsonl");
 
@@ -1313,10 +1257,7 @@ pub fn render_active_agents() -> Option<String> {
 /// Format: "180+"
 pub fn render_tools_count() -> Option<String> {
     // Read cached tool count (written by periodic-refresh or session-start)
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("tool_count.txt");
+    let cache_path = claude_data_dir()?.join("tool_count.txt");
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         let count = content.trim();
         if !count.is_empty() && count != "0" {
@@ -1357,10 +1298,7 @@ pub fn render_commits_today() -> Option<String> {
 pub fn render_saved_per_session() -> Option<String> {
     // Calculate from compact_quality.json (real compaction savings)
     // plus estimated token savings from rules optimization
-    let quality_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("compact_quality.json");
+    let quality_path = claude_data_dir()?.join("compact_quality.json");
     let mut saved_dollars = 0.0_f64;
     if let Ok(content) = std::fs::read_to_string(&quality_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -1373,10 +1311,7 @@ pub fn render_saved_per_session() -> Option<String> {
         }
     }
     // Base savings from rules-source→skills optimization (~95K tok/turn × turns × $0.003/1K)
-    let phase_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("token_phase.json");
+    let phase_path = claude_data_dir()?.join("token_phase.json");
     if let Ok(content) = std::fs::read_to_string(&phase_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             let calls = json
@@ -1398,10 +1333,7 @@ pub fn render_saved_per_session() -> Option<String> {
 ///
 /// Format: "Nevt"
 pub fn render_db_events() -> Option<String> {
-    let path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("event_bus.jsonl");
+    let path = claude_data_dir()?.join("event_bus.jsonl");
     let content = std::fs::read_to_string(&path).ok()?;
     let count = content.lines().filter(|l| !l.is_empty()).count();
     Some(format!("{}evt", count))
@@ -1421,10 +1353,7 @@ pub fn render_daemon_latency() -> Option<String> {
 
 /// Render rate limiting status
 pub fn render_rate_status() -> Option<String> {
-    let cache_path = dirs::home_dir()?
-        .join(".claude")
-        .join("data")
-        .join("usage_cache.json");
+    let cache_path = claude_data_dir()?.join("usage_cache.json");
 
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
