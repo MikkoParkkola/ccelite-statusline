@@ -178,7 +178,9 @@ pub fn render_disk_free() -> Option<String> {
         let rc = unsafe { libc::statvfs(path.as_ptr(), stat.as_mut_ptr()) };
         if rc == 0 {
             let stat = unsafe { stat.assume_init() };
-            let free_bytes = stat.f_bavail as u64 * stat.f_frsize;
+            // f_frsize is c_ulong: u64 on 64-bit targets, u32 elsewhere.
+            #[allow(clippy::unnecessary_cast)]
+            let free_bytes = stat.f_bavail as u64 * stat.f_frsize as u64;
             let gb = free_bytes as f64 / 1_073_741_824.0;
             return Some(if gb >= 1000.0 {
                 format!("{:.1}T", gb / 1024.0)
